@@ -32,8 +32,10 @@ void loop() {
       receiveHumidityData();
     } else if (command == Command::BEAT) {
       Serial.println("Beat <3");
+      serial.write(Command::TEMPERATURE_REQUEST);
     }
   }
+
 
   
   

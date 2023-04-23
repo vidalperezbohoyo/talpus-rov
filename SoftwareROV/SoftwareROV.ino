@@ -16,8 +16,12 @@ const int TX_PIN = 3;
 
 const int DHT_PIN = 5;
 
+const int LEFT_MOTOR_PIN = 6;
+const int RIGHT_MOTOR_PIN = 9;
+const int UP_MOTOR_PIN = 10;
+const int DOWN_MOTOR_PIN = 11;
 
-SoftwareSerial serial (RX_PIN, TX_PIN);
+SoftwareSerial serial(RX_PIN, TX_PIN);
 
 DHT dht(DHT_PIN, DHTTYPE);
 
@@ -25,18 +29,24 @@ void setup() {
   // Define pin modes for TX and RX
   pinMode(RX_PIN, INPUT);
   pinMode(TX_PIN, OUTPUT);
+
   pinMode(CELL1_PIN, INPUT);
- 
+
+  pinMode(LEFT_MOTOR_PIN, OUTPUT);
+  pinMode(RIGHT_MOTOR_PIN, OUTPUT);
+  pinMode(UP_MOTOR_PIN, OUTPUT);
+  pinMode(DOWN_MOTOR_PIN, OUTPUT);
+
   serial.begin(9600);
   dht.begin();
   unsigned long period = (1000000.0 / BEAT_RATE);
   Timer1.initialize(period);
-  Timer1.attachInterrupt(sendBeat); 
+  Timer1.attachInterrupt(sendBeat);
 }
 
 void loop() {
-  while (!serial.available()) {}; // Wait 
-  
+  while (!serial.available()) {};  // Wait
+
   Command command = (Command)serial.read();
 
   if (command == Command::TEMPERATURE_REQUEST) {
@@ -45,46 +55,45 @@ void loop() {
     sendBatteryData();
   } else if (command == Command::HUMIDITY_REQUEST) {
     sendHumidityData();
-  } if (command == Command::BEAT) {
+  } else if (command == Command::BEAT) {
     Serial.println("Beat <3");
   }
-  
 }
 
 
 void sendBatteryData() {
-  unsigned char * bytes;
+  unsigned char* bytes;
 
   BatteryData battery = getBatteryData();
 
   noInterrupts();
   serial.write(Command::BATTERY_REPORT);
   bytes = (unsigned char*)&battery;
-  serial.write(bytes, sizeof(BatteryData)); 
+  serial.write(bytes, sizeof(BatteryData));
   interrupts();
 }
 
 void sendTemperatureData() {
-  unsigned char * bytes;
+  unsigned char* bytes;
 
   TemperatureData temperature = getTemperatureData();
 
   noInterrupts();
   serial.write(Command::TEMPERATURE_REPORT);
   bytes = (unsigned char*)&temperature;
-  serial.write(bytes, sizeof(TemperatureData)); 
+  serial.write(bytes, sizeof(TemperatureData));
   interrupts();
 }
 
 void sendHumidityData() {
-  unsigned char * bytes;
+  unsigned char* bytes;
 
   HumidityData humidity = getHumidityData();
 
   noInterrupts();
   serial.write(Command::HUMIDITY_REPORT);
   bytes = (unsigned char*)&humidity;
-  serial.write(bytes, sizeof(HumidityData)); 
+  serial.write(bytes, sizeof(HumidityData));
   interrupts();
 }
 
@@ -113,3 +122,30 @@ HumidityData getHumidityData() {
   data.humidity = dht.readHumidity();
   return data;
 }
+
+void receiveMoveData() {
+  MoveData data;
+
+  int msgSize = sizeof(MoveData);
+  unsigned char msgBuffer[msgSize];
+
+  readBytes(msgSize, msgBuffer);
+
+  data = *(MoveData*)msgBuffer;
+
+  analogWrite(LEFT_MOTOR_PIN, data.leftMotorThrust);
+  analogWrite(RIGHT_MOTOR_PIN, data.rightMotorThrust);
+  analogWrite(UP_MOTOR_PIN, data.upMotorThrust);
+  analogWrite(DOWN_MOTOR_PIN, data.downMotorThrust);
+}
+
+void readBytes(int n, uint8_t * buffer) {
+
+  while (serial.available() < n); // Wait
+
+  for (int i = 0; i < n; i++) {
+    buffer[i] = serial.read();
+  }
+}
+
+
