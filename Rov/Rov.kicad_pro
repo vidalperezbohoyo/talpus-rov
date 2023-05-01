@@ -485,12 +485,12 @@
       ""
     ],
     [
-      "6db42fa7-2425-4198-acdf-a4035031c930",
-      "MotorsDrivers"
-    ],
-    [
       "02be91a2-af96-420c-a76d-c2f8801e0b9e",
       "CommunicationsBoard"
+    ],
+    [
+      "8b618fb7-bec3-4163-86cd-8b3ab3862158",
+      "MotorsDriver"
     ]
   ],
   "text_variables": {}
