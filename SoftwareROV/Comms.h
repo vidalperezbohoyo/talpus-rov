@@ -2,16 +2,20 @@
 
 enum Command {
   ALERT,
+  ALERT_REQUEST,
   BEAT,
-  BATTERY_REPORT,
+  BEAT_REQUEST,
+  BATTERY,
   BATTERY_REQUEST,
-  TEMPERATURE_REPORT,
+  TEMPERATURE,
   TEMPERATURE_REQUEST,
-  HUMIDITY_REPORT,
-  HUMIDITY_REQUEST
+  HUMIDITY,
+  HUMIDITY_REQUEST,
+  SPEED
 };
 
 enum Alert {
+  NO_ALERT,
   LOW_BATTERY,
   OVER_TEMPERATURE
 };
@@ -20,7 +24,7 @@ struct BatteryData {
   float cellVoltage1;
 };
 
-struct MoveData {
+struct SpeedData {
   unsigned char leftMotorThrust;
   unsigned char rightMotorThrust;
   unsigned char upMotorThrust;
