@@ -3,6 +3,10 @@
 #include "Arduino.h"
 #include "Defines.hpp"
 
+#define PIN_LED_R 8
+#define PIN_LED_G 9
+#define PIN_LED_B 10
+
 class Robot
 {
 public:

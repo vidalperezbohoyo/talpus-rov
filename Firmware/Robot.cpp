@@ -5,6 +5,39 @@ Robot::Robot()
 
 }
 
+void Robot::init()
+{
+    pinMode(PIN_LED_R, OUTPUT);
+    pinMode(PIN_LED_G, OUTPUT);
+    pinMode(PIN_LED_B, OUTPUT);
+
+    // All off
+    digitalWrite(PIN_LED_R, LOW);
+    digitalWrite(PIN_LED_G, LOW);
+    digitalWrite(PIN_LED_B, LOW);
+
+
+    // Display startup LED sequence
+    digitalWrite(PIN_LED_R, HIGH);
+    digitalWrite(PIN_LED_G, LOW);
+    digitalWrite(PIN_LED_B, LOW);
+    delay(1500);
+
+    digitalWrite(PIN_LED_R, LOW);
+    digitalWrite(PIN_LED_G, HIGH);
+    digitalWrite(PIN_LED_B, LOW);
+    delay(1500);
+
+    digitalWrite(PIN_LED_R, LOW);
+    digitalWrite(PIN_LED_G, LOW);
+    digitalWrite(PIN_LED_B, HIGH);
+    delay(1500);
+
+    digitalWrite(PIN_LED_R, LOW);
+    digitalWrite(PIN_LED_G, HIGH);
+    digitalWrite(PIN_LED_B, LOW);
+}
+
 void Robot::loop()
 {
     // Wait for commands
