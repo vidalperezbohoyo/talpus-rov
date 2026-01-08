@@ -1,15 +1,22 @@
 #pragma once
 
+#define ADC_MAX_VALUE 4095 // 12-bit ADC ESP32
+
 #define SYNC_BYTE 0xAA
 
-#define CONTROLLER_POLL_RATE 
+// Pin definitions
+
+#define PIN_DE_RE 7 // MAX-458 DE/RE control pin
+
+#define PIN_BATTERY_ADC 4 // ADC pin for battery voltage reading. Voltage divider of 10k and 1k
 
 enum CommandCode
 {
     CMD_NONE = 0,
     CMD_CONTROL,
     CMD_LIGHTS,
-    CMD_BATTERY
+    CMD_REQUEST_BATTERY,
+    CMD_REQUEST_LIVE_STATUS
 };
 
 enum ResponseCode

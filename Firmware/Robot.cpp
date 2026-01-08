@@ -7,35 +7,12 @@ Robot::Robot()
 
 void Robot::init()
 {
-    pinMode(PIN_LED_R, OUTPUT);
-    pinMode(PIN_LED_G, OUTPUT);
-    pinMode(PIN_LED_B, OUTPUT);
+    Serial.begin(115200);
+    
+    pinMode(PIN_DE_RE, OUTPUT);
+    digitalWrite(PIN_DE_RE, LOW); // MAX-458 RX MODE
 
-    // All off
-    digitalWrite(PIN_LED_R, LOW);
-    digitalWrite(PIN_LED_G, LOW);
-    digitalWrite(PIN_LED_B, LOW);
-
-
-    // Display startup LED sequence
-    digitalWrite(PIN_LED_R, HIGH);
-    digitalWrite(PIN_LED_G, LOW);
-    digitalWrite(PIN_LED_B, LOW);
-    delay(1500);
-
-    digitalWrite(PIN_LED_R, LOW);
-    digitalWrite(PIN_LED_G, HIGH);
-    digitalWrite(PIN_LED_B, LOW);
-    delay(1500);
-
-    digitalWrite(PIN_LED_R, LOW);
-    digitalWrite(PIN_LED_G, LOW);
-    digitalWrite(PIN_LED_B, HIGH);
-    delay(1500);
-
-    digitalWrite(PIN_LED_R, LOW);
-    digitalWrite(PIN_LED_G, HIGH);
-    digitalWrite(PIN_LED_B, LOW);
+    StatusLed::getInstance().green(); // Indicate ready
 }
 
 void Robot::loop()
@@ -47,6 +24,7 @@ void Robot::loop()
     {
         if (Serial.available())
         {
+            StatusLed::getInstance().yellow();
             int sync_byte = Serial.read();
             if ((sync_byte != -1) && (sync_byte == SYNC_BYTE))
             {
@@ -59,28 +37,29 @@ void Robot::loop()
                 {
                     case (CMD_CONTROL):
                     {
-                        analogWrite(PIN_MOTOR_1, cmd.param1);
-                        analogWrite(PIN_MOTOR_2, cmd.param2);
-                        analogWrite(PIN_MOTOR_3, cmd.param3);
-                        analogWrite(PIN_MOTOR_4, cmd.param4);
+                        // analogWrite(PIN_MOTOR_1, cmd.param1);
+                        // analogWrite(PIN_MOTOR_2, cmd.param2);
+                        // analogWrite(PIN_MOTOR_3, cmd.param3);
+                        // analogWrite(PIN_MOTOR_4, cmd.param4);
+                        StatusLed::getInstance().setRGB(cmd.param1, cmd.param2, 0);
                         break;
                     }
-                    case (CMD_LIGHTS):
-                    {
-                        analogWrite(PIN_LIGHTS, cmd.param1);
-                    }
-                    case (CMD_BATTERY):
-                    {
-                        // Read
+                    // case (CMD_LIGHTS):
+                    // {
+                    //     analogWrite(PIN_LIGHTS, cmd.param1);
+                    // }
+                    // case (CMD_BATTERY):
+                    // {
+                    //     // Read
 
-                        // Send response
-                        Response res;
-                        res.code = RES_OK;
-                        res.value = 124;
+                    //     // Send response
+                    //     Response res;
+                    //     res.code = RES_OK;
+                    //     res.value = 124;
 
-                        // MAX-458 TX MODE
-                        // MAX-458 RX MODE
-                    }
+                    //     // MAX-458 TX MODE
+                    //     // MAX-458 RX MODE
+                    // }
                     default:
                     {
                         // Unknown CMD
