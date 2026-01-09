@@ -1,10 +1,7 @@
 #pragma once
 
 #include "Arduino.h"
-
-#define PIN_RED    8
-#define PIN_GREEN  9
-#define PIN_BLUE   10
+#include "Defines.hpp"
 
 class StatusLed
 {
@@ -16,7 +13,7 @@ public:
         return instance;
     }
 
-    void begin();
+    void init();
 
     bool isOn() const { return on; }
 

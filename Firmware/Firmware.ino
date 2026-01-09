@@ -1,32 +1,28 @@
-#include "Robot.hpp"
-#include "Controller.hpp"
-#include "OTA.hpp"
 #include "StatusLed.hpp"
-
-#define PIN_OTA 6
 
 #define ROBOT_FW
 
 #if defined(ROBOT_FW)
+    #include "Robot.hpp"
+    #include "OTA.hpp"
     Robot robot;
 #else
+    #include "Controller.hpp"
     Controller controller;
 #endif
 
 void setup()
-{
-    pinMode(PIN_OTA, INPUT_PULLUP);
-
-    StatusLed::getInstance().begin();
-
-    // Check if OTA mode
-    if (digitalRead(PIN_OTA) == LOW)
-    {
-        StatusLed::getInstance().blue();
-        OTA::update(); // Will not return
-    }
-
+{  
     #if defined(ROBOT_FW)
+        OTA::init();
+        StatusLed::getInstance().init();
+
+        // Check if OTA mode
+        if (OTA::requestUpdate())
+        {
+            StatusLed::getInstance().blue();
+            OTA::update(); // Will not return
+        }
         robot.init();
     #else
         controller.init();

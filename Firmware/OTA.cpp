@@ -1,9 +1,19 @@
 #include "OTA.hpp"
 
+void OTA::init()
+{
+    pinMode(PIN_OTA, INPUT_PULLUP);
+}
+
+bool OTA::requestUpdate()
+{
+    return digitalRead(PIN_OTA) == LOW;
+}
+
 void OTA::update()
 {
-    const char* ssid = "ROV";
-    const char* password = "123456789"; // Use more than 8 characters to work!!!
+    const char* ssid = OTA_SSID;
+    const char* password = OTA_PASSWORD;
 
     WebServer server(80);
 

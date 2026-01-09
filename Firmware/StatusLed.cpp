@@ -1,6 +1,6 @@
 #include "StatusLed.hpp"
 
-void StatusLed::begin()
+void StatusLed::init()
 {
     pinMode(PIN_RED, OUTPUT);
     pinMode(PIN_GREEN, OUTPUT);

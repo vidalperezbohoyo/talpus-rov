@@ -1,15 +1,9 @@
 #pragma once
 
 #include "Arduino.h"
+#include <PS4Controller.h>
+#include "RS485.hpp"
 #include "Defines.hpp"
-
-#define PIN_JOYSTICK_LEFT_X  0
-#define PIN_JOYSTICK_LEFT_Y  1
-#define PIN_JOYSTICK_RIGHT_X 2
-#define PIN_JOYSTICK_RIGHT_Y 3
-
-#define JOYSTICK_DEADZONE 50 // In ADC units
-#define JOYSTICK_CENTER (ADC_MAX_VALUE / 2)
 
 class Controller
 {

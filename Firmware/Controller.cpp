@@ -1,4 +1,5 @@
-#include "Controller.hpp"
+
+/*#include "Controller.hpp"
 
 Controller::Controller()
 {
@@ -7,10 +8,10 @@ Controller::Controller()
 
 void Controller::init()
 {
-    Serial.begin(115200);
-    
-    pinMode(PIN_DE_RE, OUTPUT);
-    digitalWrite(PIN_DE_RE, HIGH); // MAX-458 TX MODE
+    RS485::getInstance().init(CONTROLLER_PIN_RX, CONTROLLER_PIN_TX, CONTROLLER_PIN_DE_RE);
+    PS4.begin("e0:d4:e8:72:14:37");
+
+    while (!PS4.isConnected());
 
     pinMode(5, OUTPUT);
 
@@ -30,8 +31,6 @@ void Controller::init()
         1,
         NULL
     );
-
-
 }
 
 void Controller::loop()
@@ -57,39 +56,30 @@ void Controller::task_readControlInputs()
         // Take RS485 mutex
         xSemaphoreTake(rs485_mutex, portMAX_DELAY);
 
-        // Left joystick controls UP/DOWN
-        int left_stick_y = analogRead(PIN_JOYSTICK_LEFT_Y);
+        int8_t left_stick_x = PS4.LStickX();
+        int8_t left_stick_y = PS4.LStickY();
+        int8_t right_stick_x = PS4.RStickX();
+        int8_t right_stick_y = PS4.RStickY();
 
-        uint8_t up_thrust = map(left_stick_y, JOYSTICK_CENTER + JOYSTICK_DEADZONE, ADC_MAX_VALUE, 0, 255);
-        uint8_t down_thrust = map(left_stick_y, 0, JOYSTICK_CENTER - JOYSTICK_DEADZONE, 0, 255);
+        uint8_t l2_value = PS4.L2Value();
+        uint8_t r2_value = PS4.R2Value();
+
+        uint8_t left_thrust = 0;
+
+        ControlMessage msg;
+        msg.motor_id = 0; // Motor 1
+        msg.thrust = r2_value;
+        analogWrite(5, msg.thrust);
+        RS485::getInstance().send(Protocol::pack(msg));
+
+        msg.motor_id = 1; // Motor 2
+        msg.thrust = l2_value;
+        RS485::getInstance().send(Protocol::pack(msg));
         
-        // Right joystick controls FORWARD/BACKWARD and LEFT/RIGHT (Differential drive)
-        int right_stick_x = analogRead(PIN_JOYSTICK_RIGHT_X);
-        int right_stick_y = analogRead(PIN_JOYSTICK_RIGHT_Y);
-
-        uint8_t left_thust = 0;
-        uint8_t right_thust = 0;
-        joystickToDifferentialDrive(right_stick_x, right_stick_y, left_thust, right_thust);
-
-        // Send command
-        Command command;
-        command.code = CMD_CONTROL;
-        command.param1 = up_thrust;
-        command.param2 = down_thrust;
-        command.param3 = left_thust;
-        command.param4 = right_thust;
-
-        Serial.write(SYNC_BYTE);
-        Serial.write((uint8_t*)&command, sizeof(Command));
-        Serial.flush(); // Ensure all previous data is sent
-
         // Release RS485 mutex
         xSemaphoreGive(rs485_mutex);
 
         vTaskDelayUntil(&last_wake_time, period);
-        
-        digitalWrite(5, on ? HIGH : LOW);
-        on = !on;
     }
 }
 
@@ -110,16 +100,7 @@ void Controller::task_requestBattery()
         xSemaphoreTake(rs485_mutex, portMAX_DELAY);
 
         // Send battery request command
-        Command command;
-        command.code = CMD_REQUEST_BATTERY;
-        command.param1 = 0;
-        command.param2 = 0;
-        command.param3 = 0;
-        command.param4 = 0;
 
-        Serial.write(SYNC_BYTE);
-        Serial.write((uint8_t*)&command, sizeof(Command));
-        Serial.flush(); // Ensure all previous data is sent
 
         // Release RS485 mutex
         xSemaphoreGive(rs485_mutex);
@@ -162,3 +143,4 @@ void Controller::joystickToDifferentialDrive(int joy_x, int joy_y, uint8_t& left
     left_thust = (v_left  > 0.0f) ? uint8_t(v_left  * 255) : 0;
     right_thust = (v_right > 0.0f) ? uint8_t(v_right * 255) : 0;
 }
+    */
