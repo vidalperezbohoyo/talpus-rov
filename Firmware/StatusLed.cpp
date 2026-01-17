@@ -1,3 +1,5 @@
+#if defined(ARDUINO_ESP32C3_DEV) // Only for ESP32-C3
+
 #include "StatusLed.hpp"
 
 void StatusLed::init()
@@ -56,4 +58,6 @@ void StatusLed::off()
 {
     setRGB(0, 0, 0);
 }
+
+#endif
 

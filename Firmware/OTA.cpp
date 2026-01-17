@@ -1,3 +1,5 @@
+#if defined(ARDUINO_ESP32C3_DEV) // Only for ESP32-C3
+
 #include "OTA.hpp"
 
 void OTA::init()
@@ -35,4 +37,6 @@ void OTA::update()
         ElegantOTA.loop();
     }
 }
+
+#endif
 

@@ -1,4 +1,5 @@
 #pragma once
+#if defined(ARDUINO_ESP32C3_DEV) // Only for ESP32-C3
 
 #include "Arduino.h"
 #include "Defines.hpp"
@@ -38,3 +39,4 @@ private:
 
     bool on = false;
 };
+#endif

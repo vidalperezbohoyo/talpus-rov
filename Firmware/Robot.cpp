@@ -1,3 +1,5 @@
+#if defined(ARDUINO_ESP32C3_DEV) // Only for ESP32-C3
+
 #include "Robot.hpp"
 
 Robot::Robot()
@@ -121,3 +123,5 @@ void Robot::task_watchdog()
         vTaskDelayUntil(&last_wake_time, period);
     }
 }
+
+#endif

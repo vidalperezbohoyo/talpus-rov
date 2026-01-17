@@ -1,5 +1,6 @@
+#if defined(ARDUINO_ESP32_DEV) // Only for ESP32
 
-/*#include "Controller.hpp"
+#include "Controller.hpp"
 
 Controller::Controller()
 {
@@ -9,17 +10,17 @@ Controller::Controller()
 void Controller::init()
 {
     RS485::getInstance().init(CONTROLLER_PIN_RX, CONTROLLER_PIN_TX, CONTROLLER_PIN_DE_RE);
+
+    Serial.begin(115200);
+    Serial.println("[Controller::init] Init start");
+
+    UI::getInstance().init();
+
     PS4.begin("e0:d4:e8:72:14:37");
 
+    Serial.println("[Controller::init] Waiting for PS4 Controller connection...");
     while (!PS4.isConnected());
-
-    pinMode(5, OUTPUT);
-
-    digitalWrite(5, HIGH); 
-    delay(1000);
-    digitalWrite(5, LOW);
-    delay(1000);
-
+    Serial.println("[Controller::init] PS4 Controller connected");
 
     rs485_mutex = xSemaphoreCreateMutex();
 
@@ -31,6 +32,18 @@ void Controller::init()
         1,
         NULL
     );
+
+    xTaskCreate(
+        UI::refreshScreen,
+        "UITask",
+        8000, // Stack       
+        this,
+        1,
+        NULL
+    );
+
+  Serial.println("[Controller::init] Init done");
+
 }
 
 void Controller::loop()
@@ -55,7 +68,7 @@ void Controller::task_readControlInputs()
     {
         // Take RS485 mutex
         xSemaphoreTake(rs485_mutex, portMAX_DELAY);
-
+        
         int8_t left_stick_x = PS4.LStickX();
         int8_t left_stick_y = PS4.LStickY();
         int8_t right_stick_x = PS4.RStickX();
@@ -75,9 +88,16 @@ void Controller::task_readControlInputs()
         msg.motor_id = 1; // Motor 2
         msg.thrust = l2_value;
         RS485::getInstance().send(Protocol::pack(msg));
+
         
         // Release RS485 mutex
         xSemaphoreGive(rs485_mutex);
+
+        // Show information
+        MotorInformation motor_info;
+        motor_info.motor_id = 0;
+        motor_info.thrust = r2_value;
+        UI::getInstance().update(motor_info);
 
         vTaskDelayUntil(&last_wake_time, period);
     }
@@ -109,38 +129,4 @@ void Controller::task_requestBattery()
     }
 }
 
-void Controller::joystickToDifferentialDrive(int joy_x, int joy_y, uint8_t& left_thust, uint8_t& right_thust)
-{
-    // 1. Deadzone
-    if (std::abs(joy_x - JOYSTICK_CENTER) < JOYSTICK_DEADZONE)
-    {
-        joy_x = JOYSTICK_CENTER;
-    }
-
-    if (std::abs(joy_y - JOYSTICK_CENTER) < JOYSTICK_DEADZONE)
-    {
-        joy_y = JOYSTICK_CENTER;
-    }
-
-    // 2. Normalize [-1.0, 1.0]
-    float x = (float(joy_x) - JOYSTICK_CENTER) / JOYSTICK_CENTER;
-    float y = (float(joy_y) - JOYSTICK_CENTER) / JOYSTICK_CENTER;
-
-    // Clamp for safety
-    x = std::clamp(x, -1.0f, 1.0f);
-    y = std::clamp(y, -1.0f, 1.0f);
-
-    // 3. Differential mixing
-    float v_left  = y + x;
-    float v_right = y - x;
-
-    // 4. Normalization (avoids saturation)
-    float max_val = std::max({ std::abs(v_left), std::abs(v_right), 1.0f });
-    v_left  /= max_val;
-    v_right /= max_val;
-
-    // Return values as uint8_t thrust commands
-    left_thust = (v_left  > 0.0f) ? uint8_t(v_left  * 255) : 0;
-    right_thust = (v_right > 0.0f) ? uint8_t(v_right * 255) : 0;
-}
-    */
+#endif

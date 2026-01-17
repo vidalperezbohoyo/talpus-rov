@@ -31,11 +31,6 @@
 #define PIN_MOTOR_3 2 // Left
 #define PIN_MOTOR_4 3 // Right
 
-// Controller pins
-#define PIN_JOYSTICK_LEFT_X  0
-#define PIN_JOYSTICK_LEFT_Y  1
-#define PIN_JOYSTICK_RIGHT_X 2
-#define PIN_JOYSTICK_RIGHT_Y 3
 
 /* 
  * Other definitions
@@ -50,11 +45,15 @@
 
 #define EMERGENCY_RTL_TIMEOUT_MS 3000 // Time without commands to trigger emergency RTL
 
+#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 240
+#define DRAW_BUF_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT / 10 * (LV_COLOR_DEPTH / 8))
+
 enum class MessageType : uint8_t
 {
     CONTROL = 0b000,
-    RESERVED_1 = 0b001,
-    RESERVED_2 = 0b010,
+    REQUEST_BATTERY = 0b001,
+    RESPONSE_BATTERY = 0b010,
     RESERVED_3 = 0b011,
     RESERVED_4 = 0b100,
     RESERVED_5 = 0b101,
@@ -66,4 +65,63 @@ struct ControlMessage
 {
     uint8_t motor_id; // 0-3
     uint8_t thrust;   // 0-255
+};
+
+struct BatteryRequestMessage
+{
+    // Empty
+};
+
+struct BatteryResponseMessage
+{
+    uint8_t percentage;
+};
+
+/*
+ Battery voltage to percentage mapping
+*/
+const float VOLTAGE_TABLE[32] = {
+  9.00, 9.30, 9.60, 9.85,
+  10.05, 10.25, 10.45, 10.65,
+  10.80, 10.95, 11.05, 11.15,
+  11.25, 11.35, 11.40, 11.45,
+  11.50, 11.55, 11.60, 11.70,
+  11.80, 11.90, 12.00, 12.10,
+  12.20, 12.30, 12.35, 12.40,
+  12.45, 12.50, 12.55, 12.60
+};
+
+const int PERCENT_TABLE[32] = {
+   0,  3,  6, 10,
+  13, 16, 19, 23,
+  26, 29, 32, 35,
+  39, 42, 45, 48,
+  52, 55, 58, 61,
+  65, 68, 71, 74,
+  77, 81, 84, 87,
+  90, 94, 97, 100
+};
+
+/*
+    Struct for UI
+*/
+enum class BatteryType
+{
+    ROV,
+    CONTROLLER,
+    DUALSHOCK
+};
+
+struct MotorInformation
+{
+    uint8_t motor_id; // 0-3
+    uint8_t thrust;   // 0-255
+};
+
+struct BatteryInformation
+{
+    BatteryType type;
+    uint8_t percentage;
+    float voltage; // Not for DualShock
+    bool charging; // Only for DualShock
 };

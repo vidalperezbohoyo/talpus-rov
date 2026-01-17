@@ -1,5 +1,7 @@
 #pragma once
 
+#if defined(ARDUINO_ESP32C3_DEV) // Only for ESP32-C3
+
 #include "Arduino.h"
 #include "RS485.hpp"
 #include "Defines.hpp"
@@ -21,3 +23,5 @@ private:
 
     unsigned long last_command_time = 0;
 };
+
+#endif
