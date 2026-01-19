@@ -17,10 +17,16 @@ public:
 
     void loop();
 
+    static void rovControlTask(void* params);
+    static void rovBatteryTask(void* params);
+
 private:
+    // Queues to send Structs between tasks
+    QueueHandle_t battery_response_queue_;
+    QueueHandle_t control_message_queue_;
 
-
-    SemaphoreHandle_t rs485_mutex;
+    // Mutex for communication access
+    SemaphoreHandle_t comms_mutex_;
 };
 
 #endif

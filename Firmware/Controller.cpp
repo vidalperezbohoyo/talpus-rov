@@ -18,12 +18,102 @@ void Controller::init()
 
     PS4.begin("e0:d4:e8:72:14:37");
 
-    rs485_mutex = xSemaphoreCreateMutex();
+    comms_mutex_ = xSemaphoreCreateMutex();
 
     Serial.println("[Controller::init] Init done");
 
+    // Control task to send control messages periodically
+    xTaskCreate(
+        rovControlTask,
+        "RovControlTask",
+        4096,
+        this, /* Parameter passed as input of the task */
+        1,
+        nullptr
+    );
+
+    // // Battery task to request battery periodically
+    // xTaskCreate(
+    //     rovBatteryTask,
+    //     "RovBatteryTask",
+    //     4096,
+    //     this, /* Parameter passed as input of the task */
+    //     1,
+    //     nullptr
+    // );
+
+    // Queues to send Structs between tasks
+    battery_response_queue_ = xQueueCreate(3 /* Max items */, sizeof(BatteryResponseMessage));
+    control_message_queue_ = xQueueCreate(8 /* Max items */, sizeof(ControlMessage));
 }
 
+void Controller::loop()
+{
+    // UI updates at 10Hz  
+    MotorInformation motor_info;
+
+    while (xQueueReceive(control_message_queue_, &motor_info, 0) == pdTRUE)
+    {
+        UI::getInstance().update(motor_info);
+    }
+
+    // BatteryInformation battery_info;
+    // BatteryResponseMessage battery_response;
+    // while (xQueueReceive(battery_response_queue_, &battery_response, 0) == pdTRUE)
+    // {
+    //     battery_info.type = BatteryType::ROV;
+    //     battery_info.percentage = battery_response.percentage;
+    //     UI::getInstance().update(battery_info);
+    // }
+
+    UI::getInstance().refresh();
+}
+
+void Controller::rovControlTask(void* params)
+{
+    Controller* controller = static_cast<Controller*>(params);
+
+    // Spin at 10Hz
+    const TickType_t delay_ticks = pdMS_TO_TICKS(100);
+    while (true)
+    {
+        // Read from DualShock4
+        if (!PS4.isConnected())
+        {
+            Serial.println("[Controller::rovControlTask] PS4 Controller lost!");
+            vTaskDelay(delay_ticks);
+            continue;
+        }
+
+        int8_t left_stick_y = PS4.LStickY();
+
+        ControlMessage original_control_msg_up;
+        original_control_msg_up.motor_id = 0; // Motor 1
+        original_control_msg_up.thrust = left_stick_y > 10 ? left_stick_y * 2 : 0;
+
+        uint8_t packed_msg_up = Protocol::pack(original_control_msg_up);
+     
+        // Send data
+        xSemaphoreTake(controller->comms_mutex_, portMAX_DELAY); // Adquire mutex
+        RS485::getInstance().txMode();
+        RS485::getInstance().send(packed_msg_up);
+        xSemaphoreGive(controller->comms_mutex_); // Release mutex
+
+        // Update UI with what robot receives (unpacking)
+        ControlMessage received_control_msg_up;
+        Protocol::unpack(packed_msg_up, received_control_msg_up);
+        
+        MotorInformation motor_info_up;
+        motor_info_up.motor_id = received_control_msg_up.motor_id;
+        motor_info_up.thrust = received_control_msg_up.thrust;
+
+        // Add to queue to update UI in main task
+        xQueueSend(controller->control_message_queue_, &motor_info_up, 0);
+
+        vTaskDelay(delay_ticks);
+    }
+}
+/*
 void Controller::loop()
 {
     static int iterations = 0;
@@ -170,5 +260,7 @@ void Controller::loop()
 
     delay(100);
 }
+
+*/
 
 #endif
