@@ -22,6 +22,13 @@ void Controller::init()
 
     Serial.println("[Controller::init] Init done");
 
+    // Wait for dualshock connection
+    while (!PS4.isConnected())
+    {
+        Serial.println("[Controller::init] Waiting for PS4 controller connection...");
+        delay(1000);
+    }
+
     // Control task to send control messages periodically
     xTaskCreate(
         rovControlTask,
@@ -32,39 +39,45 @@ void Controller::init()
         nullptr
     );
 
-    // // Battery task to request battery periodically
-    // xTaskCreate(
-    //     rovBatteryTask,
-    //     "RovBatteryTask",
-    //     4096,
-    //     this, /* Parameter passed as input of the task */
-    //     1,
-    //     nullptr
-    // );
+    // Battery task to request battery periodically
+    xTaskCreate(
+        rovBatteryTask,
+        "RovBatteryTask",
+        4096,
+        this, /* Parameter passed as input of the task */
+        1,
+        nullptr
+    );
+
+    // Battery task to request battery periodically
+    xTaskCreate(
+        controllerBatteryTask,
+        "ControllerBatteryTask",
+        4096,
+        this, /* Parameter passed as input of the task */
+        1,
+        nullptr
+    );
 
     // Queues to send Structs between tasks
-    battery_response_queue_ = xQueueCreate(3 /* Max items */, sizeof(BatteryResponseMessage));
-    control_message_queue_ = xQueueCreate(8 /* Max items */, sizeof(ControlMessage));
+    battery_response_queue_ = xQueueCreate(3 /* Max items */, sizeof(BatteryInformation));
+    control_message_queue_ = xQueueCreate(8 /* Max items */, sizeof(MotorInformation));
 }
 
 void Controller::loop()
 {
     // UI updates at 10Hz  
     MotorInformation motor_info;
-
     while (xQueueReceive(control_message_queue_, &motor_info, 0) == pdTRUE)
     {
         UI::getInstance().update(motor_info);
     }
 
-    // BatteryInformation battery_info;
-    // BatteryResponseMessage battery_response;
-    // while (xQueueReceive(battery_response_queue_, &battery_response, 0) == pdTRUE)
-    // {
-    //     battery_info.type = BatteryType::ROV;
-    //     battery_info.percentage = battery_response.percentage;
-    //     UI::getInstance().update(battery_info);
-    // }
+    BatteryInformation battery_info;
+    while (xQueueReceive(battery_response_queue_, &battery_info, 0) == pdTRUE)
+    {
+        UI::getInstance().update(battery_info);
+    }
 
     UI::getInstance().refresh();
 }
@@ -109,6 +122,89 @@ void Controller::rovControlTask(void* params)
 
         // Add to queue to update UI in main task
         xQueueSend(controller->control_message_queue_, &motor_info_up, 0);
+
+        vTaskDelay(delay_ticks);
+    }
+}
+
+void Controller::controllerBatteryTask(void* params)
+{
+    Controller* controller = static_cast<Controller*>(params);
+
+    // Spin at 30 seconds
+    const TickType_t delay_ticks = pdMS_TO_TICKS(30000);
+    while (true)
+    {
+        BatteryInformation controller_battery_info;
+        controller_battery_info.type = BatteryType::CONTROLLER;
+        controller_battery_info.percentage = 75; // Dummy value
+
+        BatteryInformation dualshock_battery_info;
+        dualshock_battery_info.type = BatteryType::DUALSHOCK;
+        dualshock_battery_info.percentage = PS4.Battery() * 10; // PS4.Battery() returns 0-10
+        dualshock_battery_info.charging = PS4.Charging();
+
+        // Add to queue to update UI in main task
+        xQueueSend(controller->battery_response_queue_, &controller_battery_info, 0);
+        xQueueSend(controller->battery_response_queue_, &dualshock_battery_info, 0);
+
+        vTaskDelay(delay_ticks);
+    }
+}
+
+void Controller::rovBatteryTask(void* params)
+{
+    Controller* controller = static_cast<Controller*>(params);
+
+    // Spin at 10 seconds
+    const TickType_t delay_ticks = pdMS_TO_TICKS(10000);
+    while (true)
+    {
+        Serial.println("[Controller::rovBatteryTask] Requesting battery...");
+
+        BatteryRequestMessage request;
+        uint8_t packed_request = Protocol::pack(request);
+
+        // Send request
+        xSemaphoreTake(controller->comms_mutex_, portMAX_DELAY); // Adquire mutex
+        RS485::getInstance().txMode();
+        RS485::getInstance().send(packed_request);
+        RS485::getInstance().wait(); // Ensure data is sent
+        RS485::getInstance().rxMode(); // Switch to rx mode to receive response
+        RS485::getInstance().wait(); // Give time to switch and receive
+        RS485::getInstance().wait(); // Give time to switch and receive
+
+        int received_response = RS485::getInstance().readLast(); // Receive last byte
+
+        xSemaphoreGive(controller->comms_mutex_); // Release mutex
+
+        BatteryInformation rov_battery_info;
+        rov_battery_info.type = BatteryType::ROV;
+
+        if (received_response == -1)
+        {
+            // Error
+            rov_battery_info.percentage = 0;
+            Serial.println("[ERROR] No response on BatteryResquestMessage");
+        }
+        else
+        {
+            BatteryResponseMessage response;
+            if (!Protocol::unpack(static_cast<uint8_t>(received_response), response))
+            {
+                // Error, other thing received
+                rov_battery_info.percentage = 0;
+                Serial.print("[ERROR] Invalid response on BatteryResquestMessage");
+            }
+            else
+            {
+                rov_battery_info.percentage = response.percentage;
+                Serial.println("[INFO] Received battery from ROV");
+            }
+        }
+
+        // Add to queue to update UI in main task
+        xQueueSend(controller->battery_response_queue_, &rov_battery_info, 0);
 
         vTaskDelay(delay_ticks);
     }

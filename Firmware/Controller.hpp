@@ -19,6 +19,7 @@ public:
 
     static void rovControlTask(void* params);
     static void rovBatteryTask(void* params);
+    static void controllerBatteryTask(void* params);
 
 private:
     // Queues to send Structs between tasks
