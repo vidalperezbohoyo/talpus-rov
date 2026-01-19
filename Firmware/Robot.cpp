@@ -29,22 +29,14 @@ void Robot::init()
     pinMode(PIN_LIGHTS, OUTPUT);
     analogWrite(PIN_LIGHTS, 0); // Lights off
 
-    // Watchdog task
-    /*
-    xTaskCreate(
-        task_wrapper_watchdog,
-        "WatchdogTask",
-        4096, // Stack       
-        this,
-        1,
-        NULL
-    );
-    */
+    Serial.begin(115200);
 }
 
 void Robot::loop()
 {
     // Wait for commands
+    RS485::getInstance().rxMode(); // Ensure in rx mode
+
     while (true)
     {
         if (RS485::getInstance().available())
@@ -62,30 +54,24 @@ void Robot::loop()
                 ControlMessage msg;
                 
                 // Unpack command
-                Protocol::unpack(byte, msg);
-
-                // Process command
-                switch (msg.motor_id)
+                if (Protocol::unpack(byte, msg))
                 {
-                    case 0: // Motor 1
-                        //analogWrite(PIN_MOTOR_1, msg.thrust);
-                        StatusLed::getInstance().setRGB(0, 0, msg.thrust); // Indicate activity
-                        break;
-                    case 1: // Motor 2
-                        //analogWrite(PIN_MOTOR_2, msg.thrust);
-                        break;
-                    case 2: // Motor 3
-                        //analogWrite(PIN_MOTOR_3, msg.thrust);
-                        break;
-                    case 3: // Motor 4
-                        //analogWrite(PIN_MOTOR_4, msg.thrust);
-                        break;
-                    default:
-                        break;
+                    processControlMessage(msg);
                 }
+
+                //Serial.print("Received CONTROL with id: "); Serial.print(static_cast<int>(msg.motor_id)); Serial.print(" and value: "); Serial.println(static_cast<int>(msg.thrust));
 
                 // Update last command time
                 last_command_time = millis();
+            }
+            else if (Protocol::getMessageType(byte) == MessageType::REQUEST_BATTERY)
+            {
+                Serial.println("Received REQUEST_BATTERY");
+                RS485::getInstance().wait(); // Wait before responding
+                RS485::getInstance().txMode(); // Switch to tx mode to send response                
+                processBatteryRequestMessage();
+                RS485::getInstance().wait();
+                RS485::getInstance().rxMode(); // Switch back to rx mode
             }
             else
             {
@@ -96,32 +82,41 @@ void Robot::loop()
     }
 }
 
-void Robot::task_wrapper_watchdog(void* params)
+void Robot::processControlMessage(const ControlMessage& msg)
 {
-    Robot* robot = static_cast<Robot*>(params);
-    robot->task_watchdog();
+    switch (msg.motor_id)
+    {
+        case 0: // Motor 1
+            StatusLed::getInstance().setRGB(0, 0, msg.thrust); // Indicate activity
+
+            //analogWrite(PIN_MOTOR_1, msg.thrust);
+            break;
+        case 1: // Motor 2
+            //analogWrite(PIN_MOTOR_2, msg.thrust);
+            break;
+        case 2: // Motor 3
+            //analogWrite(PIN_MOTOR_3, msg.thrust);
+            break;
+        case 3: // Motor 4
+            //analogWrite(PIN_MOTOR_4, msg.thrust);
+            break;
+        default:
+            break;
+    }
 }
 
-void Robot::task_watchdog()
+void Robot::processBatteryRequestMessage()
 {
-    const TickType_t period = pdMS_TO_TICKS(1000); // 1 second
-    TickType_t last_wake_time = xTaskGetTickCount();
+    // Prepare response message
+    BatteryResponseMessage response;
+    response.percentage = 77;
 
-    while (true)
-    {
-        // Check if there is lot of time without serial data
-        // If so, go up fast to surface
-        if (millis() - last_command_time > EMERGENCY_RTL_TIMEOUT_MS)
-        {
-            StatusLed::getInstance().red();
-            analogWrite(PIN_MOTOR_1, 255); // Full up
-            analogWrite(PIN_MOTOR_2, 0);
-            analogWrite(PIN_MOTOR_3, 0);
-            analogWrite(PIN_MOTOR_4, 0);
-        }
-    
-        vTaskDelayUntil(&last_wake_time, period);
-    }
+    uint8_t packed_response = Protocol::pack(response);
+
+    // Send response
+    RS485::getInstance().send(packed_response);
+    RS485::getInstance().send(packed_response);
+    RS485::getInstance().send(packed_response);
 }
 
 #endif

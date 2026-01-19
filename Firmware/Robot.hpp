@@ -18,6 +18,9 @@ public:
 
 private:
 
+    void processControlMessage(const ControlMessage& msg);
+    void processBatteryRequestMessage();
+
     static void task_wrapper_watchdog(void* params);
     void task_watchdog();
 

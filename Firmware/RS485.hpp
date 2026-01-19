@@ -17,17 +17,19 @@ public:
     // Raw byte interface
     bool available();
 
-    void send(uint8_t data);
+    void wait();
 
+    void send(uint8_t data);
     int read();
+    int readLast();
+
+    void txMode();
+    void rxMode();
 
 private:
     RS485() = default;
     RS485(const RS485&) = delete;
     RS485& operator=(const RS485&) = delete;
-
-    void txMode();
-    void rxMode();
 
     int de_re_pin_ = -1;
 };

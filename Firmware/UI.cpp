@@ -20,100 +20,90 @@ void UI::init()
     lv_display_t * disp;
     disp = lv_tft_espi_create(SCREEN_WIDTH, SCREEN_HEIGHT, draw_buf_, DRAW_BUF_SIZE);
 
-    // Create queues
-    motor_info_queue_ = xQueueCreate(10, sizeof(MotorInformation));
-    battery_info_queue_ = xQueueCreate(10, sizeof(BatteryInformation));
-    
     createDashboard();
-
 }
 
 void UI::update(const MotorInformation& motor_info)
 {
-    if (motor_info_queue_ == nullptr)
-        return;
-    Serial.println("UI::update - Sending motor info to queue");
-    xQueueSend(motor_info_queue_, &motor_info, 0);
+    switch (motor_info.motor_id)
+    {
+        case 0: // UP
+            lv_bar_set_value(motor_up_thust_bar_, (int32_t)motor_info.thrust, LV_ANIM_OFF);
+            lv_label_set_text_fmt(motor_up_thust_label_, "%d", (int)motor_info.thrust);
+            break;
+        case 1: // DOWN
+            lv_bar_set_value(motor_down_thust_bar_, (int32_t)motor_info.thrust, LV_ANIM_OFF);
+            lv_label_set_text_fmt(motor_down_thust_label_, "%d", (int)motor_info.thrust);
+            break;
+        case 2: // LEFT
+            lv_bar_set_value(motor_left_thust_bar_, (int32_t)motor_info.thrust, LV_ANIM_OFF);
+            lv_label_set_text_fmt(motor_left_thust_label_, "%d", (int)motor_info.thrust);
+            break;
+        case 3: // RIGHT
+            lv_bar_set_value(motor_right_thust_bar_, (int32_t)motor_info.thrust, LV_ANIM_OFF);
+            lv_label_set_text_fmt(motor_right_thust_label_, "%d", (int)motor_info.thrust);
+            break;
+    }
+
 }
 
 void UI::update(const BatteryInformation& battery_info)
 {
-    if (battery_info_queue_ == nullptr)
-        return;
+    lv_obj_t* arc;
 
-    xQueueSend(battery_info_queue_, &battery_info, 0);
+    switch (battery_info.type)
+    {
+        case BatteryType::ROV:
+            lv_label_set_text_fmt(rov_battery_label_, "%d%%", battery_info.percentage);
+            arc = rov_battery_arc_;
+            break;
+        case BatteryType::CONTROLLER:
+            lv_label_set_text_fmt(controller_battery_label_, "%d%%", battery_info.percentage);
+            arc = controller_battery_arc_;
+            break;
+        case BatteryType::DUALSHOCK: 
+            if (battery_info.charging)
+            {
+                lv_label_set_text_fmt(dualshock_battery_label_, "%d%%\nCharging", battery_info.percentage);
+            }
+            else
+            {
+                lv_label_set_text_fmt(dualshock_battery_label_, "%d%%", battery_info.percentage);
+            }
+            arc = dualshock_battery_arc_;
+            break;
+        default:
+            return; // Unknown type
+    }
+
+    lv_arc_set_value(arc, battery_info.percentage);
+
+    // Change color based on percentage
+    if(battery_info.percentage > 60)
+    {
+        lv_obj_set_style_arc_color(arc, lv_palette_main(LV_PALETTE_LIGHT_GREEN), LV_PART_INDICATOR);
+    }
+    else if(battery_info.percentage > 30)
+    {
+        lv_obj_set_style_arc_color(arc, lv_palette_main(LV_PALETTE_ORANGE), LV_PART_INDICATOR);
+    }
+    else
+    {
+        lv_obj_set_style_arc_color(arc, lv_palette_main(LV_PALETTE_RED), LV_PART_INDICATOR);
+    }
 }
 
-void UI::refreshScreen(void* params)
+void UI::refresh()
 {
-    UI* ui = static_cast<UI*>(params);
+    // Compute how many ms elapsed since last call
+    static uint32_t last_refresh = 0;
+    uint32_t now = millis();
+    uint32_t elapsed = now - last_refresh;
+    last_refresh = now;
 
-    const TickType_t period = pdMS_TO_TICKS(100); // 100 ms -> 10 Hz
-    TickType_t last_wake_time = xTaskGetTickCount();
-
-    while (true)
-    {
-        // Process queues
-        if (ui->motor_info_queue_ == NULL || ui->battery_info_queue_ == NULL)
-        {
-            vTaskDelay(pdMS_TO_TICKS(100));
-            continue;
-        }
-
-        MotorInformation motor_update;
-        BatteryInformation battery_update;
-
-        while (xQueueReceive(ui->motor_info_queue_, &motor_update, 0) == pdTRUE)
-        {
-            switch (motor_update.motor_id)
-            {
-            case 0: // UP
-                lv_bar_set_value(ui->motor_up_thust_bar_, motor_update.thrust, LV_ANIM_OFF);
-                lv_label_set_text_fmt(ui->motor_up_thust_label_, "%d", motor_update.thrust);
-                break;
-            case 1: // DOWN
-                lv_bar_set_value(ui->motor_down_thust_bar_, motor_update.thrust, LV_ANIM_OFF);
-                lv_label_set_text_fmt(ui->motor_down_thust_label_, "%d", motor_update.thrust);
-                break;
-            case 2: // LEFT
-                lv_bar_set_value(ui->motor_left_thust_bar_, motor_update.thrust, LV_ANIM_OFF);
-                lv_label_set_text_fmt(ui->motor_left_thust_label_, "%d", motor_update.thrust);
-                break;
-            case 3: // RIGHT
-                lv_bar_set_value(ui->motor_right_thust_bar_, motor_update.thrust, LV_ANIM_OFF);
-                lv_label_set_text_fmt(ui->motor_right_thust_label_, "%d", motor_update.thrust);
-                break;
-            }
-        }
-
-        while (xQueueReceive(ui->battery_info_queue_, &battery_update, 0) == pdTRUE)
-        {
-            switch (battery_update.type)
-            {
-            case BatteryType::ROV:
-                lv_label_set_text_fmt(ui->rov_battery_percentage_label_, "%d%%", battery_update.percentage);
-                lv_label_set_text_fmt(ui->rov_battery_voltage_label_, "%.2fV", battery_update.voltage);
-                break;
-            case BatteryType::CONTROLLER:
-                lv_label_set_text_fmt(ui->controller_battery_percentage_label_, "%d%%", battery_update.percentage);
-                lv_label_set_text_fmt(ui->controller_battery_voltage_label_, "%.2fV", battery_update.voltage);
-                break;
-            case BatteryType::DUALSHOCK: 
-                lv_label_set_text_fmt(ui->dualshock_battery_label_, "%d%%", battery_update.percentage);
-                
-                if (battery_update.charging)
-                    lv_label_set_text(ui->dualshock_charging_label_, "Charging");
-                else
-                    lv_label_set_text(ui->dualshock_charging_label_, "Not charging");
-                break;
-            }
-        }
-
-        lv_tick_inc(100);
-        lv_timer_handler(); /* let the GUI do its work */
-        vTaskDelayUntil(&last_wake_time, period);
-        Serial.println("Refreshing screen");
-    }
+    lv_tick_inc(elapsed);
+    lv_timer_handler(); /* let the GUI do its work */
+    //Serial.println("[DEBUG] Refreshing screen");
 }
 
 void UI::createDashboard()
@@ -159,7 +149,47 @@ void UI::createBatteriesContainer()
         lv_obj_set_style_text_font(title, &lv_font_montserrat_12, 0);
 
         // Arc
-        lv_obj_t * arc = lv_arc_create(cell);
+        lv_obj_t * arc;        
+        
+        // Label 
+        lv_obj_t * label;
+        switch (i)
+        {
+            case 0:
+            {
+                lv_label_set_text(title, "ROV");
+
+                rov_battery_arc_ = lv_arc_create(cell);
+                arc = rov_battery_arc_;
+
+                rov_battery_label_ = lv_label_create(rov_battery_arc_);
+                label = rov_battery_label_;
+                break;
+            }
+            case 1:
+            {
+                lv_label_set_text(title, "GroundBox");
+
+                controller_battery_arc_ = lv_arc_create(cell);
+                arc = controller_battery_arc_;
+
+                controller_battery_label_ = lv_label_create(controller_battery_arc_);
+                label = controller_battery_label_;
+                break;
+            }
+            case 2:
+            {
+                lv_label_set_text(title, "DualShock4");
+
+                dualshock_battery_arc_ = lv_arc_create(cell);
+                arc = dualshock_battery_arc_;
+
+                dualshock_battery_label_ = lv_label_create(dualshock_battery_arc_);
+                label = dualshock_battery_label_;
+                break;
+            }
+        }
+        // Arc set
         lv_obj_set_size(arc, 90, 90);
         lv_arc_set_range(arc, 0, 100);
         lv_arc_set_value(arc, 0); // 0 as default
@@ -168,42 +198,11 @@ void UI::createBatteriesContainer()
         lv_arc_set_bg_angles(arc, 90 + 45, 90 - 45);
         lv_arc_set_rotation(arc, 0);
 
-        switch (i)
-        {
-            case 0:
-            {
-                lv_label_set_text(title, "ROV");
-                break;
-            }
-            case 1:
-            {
-                lv_label_set_text(title, "GroundBox");
-                break;
-            }
-            case 2:
-            {
-                lv_label_set_text(title, "DualShock4");
-                break;
-            }
-        }
-
-        /* Texto central */
-        // lv_obj_t * label = lv_label_create(arc);
-        // lv_label_set_text_fmt(label, "%d%%\n%.2fV", percent, voltage);
-        // lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-        // lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
-        // lv_obj_center(label);
-
-        /*
-        TODO
-            if(percent > 60)
-                lv_obj_set_style_arc_color(arc, lv_palette_main(LV_PALETTE_GREEN), LV_PART_INDICATOR);
-            else if(percent > 30)
-                lv_obj_set_style_arc_color(arc, lv_palette_main(LV_PALETTE_ORANGE), LV_PART_INDICATOR);
-            else
-                lv_obj_set_style_arc_color(arc, lv_palette_main(LV_PALETTE_RED), LV_PART_INDICATOR);
-        */
-
+        // Label set
+        lv_label_set_text(label, "?");
+        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
+        lv_obj_center(label);
     }
 }
 

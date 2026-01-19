@@ -19,11 +19,6 @@ public:
 
 private:
 
-    static void task_wrapper_readControlInputs(void* params);
-    void task_readControlInputs();
-
-    static void task_wrapper_requestBattery(void* params);
-    void task_requestBattery();
 
     SemaphoreHandle_t rs485_mutex;
 };

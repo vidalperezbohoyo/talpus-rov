@@ -19,8 +19,8 @@
 #define ROBOT_PIN_RX 20 // RX pin <- RS485 RO pin
 #define ROBOT_PIN_DE_RE 7 // MAX-458 DE/RE control pin
 
-#define CONTROLLER_PIN_TX 21 // TX pin -> RS485 DI pin
-#define CONTROLLER_PIN_RX 19 // RX pin <- RS485 RO pin
+#define CONTROLLER_PIN_TX 27 // TX pin -> RS485 DI pin
+#define CONTROLLER_PIN_RX 22 // RX pin <- RS485 RO pin
 #define CONTROLLER_PIN_DE_RE 4 // MAX-458 DE/RE control pin
 
 // Robot pins
@@ -45,16 +45,18 @@
 
 #define EMERGENCY_RTL_TIMEOUT_MS 3000 // Time without commands to trigger emergency RTL
 
+#define REQUEST_RETRIES 3 // How many times to retry a request
+
 #define SCREEN_WIDTH 320
 #define SCREEN_HEIGHT 240
 #define DRAW_BUF_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT / 10 * (LV_COLOR_DEPTH / 8))
 
 enum class MessageType : uint8_t
 {
-    CONTROL = 0b000,
-    REQUEST_BATTERY = 0b001,
-    RESPONSE_BATTERY = 0b010,
-    RESERVED_3 = 0b011,
+    EMPTY = 0b000,
+    CONTROL = 0b001,
+    REQUEST_BATTERY = 0b010,
+    RESPONSE_BATTERY = 0b011,
     RESERVED_4 = 0b100,
     RESERVED_5 = 0b101,
     RESERVED_6 = 0b110,

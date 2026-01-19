@@ -26,7 +26,7 @@ public:
 
     void update(const BatteryInformation& battery_info);
 
-    static void refreshScreen(void* params);
+    void refresh();
 
 private:
     UI(/* args */);
@@ -40,19 +40,14 @@ private:
     void createBatteriesContainer();
     void createMotorsThrustContainer();
 
-    // Multi-task sync
-    QueueHandle_t motor_info_queue_;
-    QueueHandle_t battery_info_queue_;
-
     // Rewritable UI elements
-    lv_obj_t* rov_battery_percentage_label_;
-    lv_obj_t* rov_battery_voltage_label_;
-
-    lv_obj_t* controller_battery_percentage_label_;
-    lv_obj_t* controller_battery_voltage_label_;
-
+    lv_obj_t* rov_battery_label_;
+    lv_obj_t* controller_battery_label_;
     lv_obj_t* dualshock_battery_label_;
-    lv_obj_t* dualshock_charging_label_;
+
+    lv_obj_t* rov_battery_arc_;
+    lv_obj_t* controller_battery_arc_;
+    lv_obj_t* dualshock_battery_arc_;
 
     lv_obj_t* motor_up_thust_bar_;
     lv_obj_t* motor_down_thust_bar_;

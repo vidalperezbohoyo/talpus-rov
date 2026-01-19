@@ -18,115 +18,157 @@ void Controller::init()
 
     PS4.begin("e0:d4:e8:72:14:37");
 
-    Serial.println("[Controller::init] Waiting for PS4 Controller connection...");
-    while (!PS4.isConnected());
-    Serial.println("[Controller::init] PS4 Controller connected");
-
     rs485_mutex = xSemaphoreCreateMutex();
 
-    xTaskCreate(
-        task_wrapper_readControlInputs,
-        "ReadControlInputsTask",
-        6144, // Stack       
-        this,
-        1,
-        NULL
-    );
-
-    xTaskCreate(
-        UI::refreshScreen,
-        "UITask",
-        8000, // Stack       
-        this,
-        1,
-        NULL
-    );
-
-  Serial.println("[Controller::init] Init done");
+    Serial.println("[Controller::init] Init done");
 
 }
 
 void Controller::loop()
 {
-    vTaskDelay(portMAX_DELAY); // No CPU work in main loop
-}
+    static int iterations = 0;
 
-void Controller::task_wrapper_readControlInputs(void* params)
-{
-    Controller* controller = static_cast<Controller*>(params);
-    controller->task_readControlInputs();
-}
+    iterations++; 
 
-void Controller::task_readControlInputs()
-{
-    const TickType_t period = pdMS_TO_TICKS(100); // 100 ms -> 10 Hz
-    TickType_t last_wake_time = xTaskGetTickCount();
-
-    bool on = true;
-
-    while (true)
+    if (!PS4.isConnected())
     {
-        // Take RS485 mutex
-        xSemaphoreTake(rs485_mutex, portMAX_DELAY);
-        
+        Serial.println("[Controller::init] PS4 Controller lost!");
+    }
+    else
+    {
         int8_t left_stick_x = PS4.LStickX();
         int8_t left_stick_y = PS4.LStickY();
-        int8_t right_stick_x = PS4.RStickX();
-        int8_t right_stick_y = PS4.RStickY();
-
-        uint8_t l2_value = PS4.L2Value();
         uint8_t r2_value = PS4.R2Value();
 
-        uint8_t left_thrust = 0;
+        // What i read
+        ControlMessage original_control_msg_up;
+        original_control_msg_up.motor_id = 0; // Motor 1
+        original_control_msg_up.thrust = left_stick_y > 10 ? left_stick_y * 2 : 0;
 
-        ControlMessage msg;
-        msg.motor_id = 0; // Motor 1
-        msg.thrust = r2_value;
-        analogWrite(5, msg.thrust);
-        RS485::getInstance().send(Protocol::pack(msg));
-
-        msg.motor_id = 1; // Motor 2
-        msg.thrust = l2_value;
-        RS485::getInstance().send(Protocol::pack(msg));
-
+        ControlMessage original_control_msg_down;
+        original_control_msg_down.motor_id = 1; // Motor 2
+        original_control_msg_down.thrust = left_stick_y < -10 ? (-left_stick_y) * 2 : 0;
         
-        // Release RS485 mutex
-        xSemaphoreGive(rs485_mutex);
+        ControlMessage original_control_msg_left;
+        original_control_msg_left.motor_id = 2; // Motor 3
+        original_control_msg_left.thrust = left_stick_x < -10 ? (-left_stick_x) * 2 : 0;
 
-        // Show information
-        MotorInformation motor_info;
-        motor_info.motor_id = 0;
-        motor_info.thrust = r2_value;
-        UI::getInstance().update(motor_info);
+        ControlMessage original_control_msg_right;
+        original_control_msg_right.motor_id = 3; // Motor 4
+        original_control_msg_right.thrust = left_stick_x > 10 ? left_stick_x * 2 : 0;
 
-        vTaskDelayUntil(&last_wake_time, period);
+        // Packing and sending messages
+        RS485::getInstance().txMode(); // Ensure in tx mode
+
+        uint8_t packed_msg_up = Protocol::pack(original_control_msg_up);
+        RS485::getInstance().send(packed_msg_up);
+        
+        uint8_t packed_msg_down = Protocol::pack(original_control_msg_down);
+        RS485::getInstance().send(packed_msg_down);
+
+        uint8_t packed_msg_left = Protocol::pack(original_control_msg_left);
+        RS485::getInstance().send(packed_msg_left);
+
+        uint8_t packed_msg_right = Protocol::pack(original_control_msg_right);
+        RS485::getInstance().send(packed_msg_right);
+
+        // What robot receives (unpacking)
+        ControlMessage received_control_msg_up;
+        Protocol::unpack(packed_msg_up, received_control_msg_up);
+
+        ControlMessage received_control_msg_down;
+        Protocol::unpack(packed_msg_down, received_control_msg_down);
+
+        ControlMessage received_control_msg_left;
+        Protocol::unpack(packed_msg_left, received_control_msg_left);
+
+        ControlMessage received_control_msg_right;
+        Protocol::unpack(packed_msg_right, received_control_msg_right);
+
+        MotorInformation motor_info_up;
+        motor_info_up.motor_id = 0;
+        motor_info_up.thrust = received_control_msg_up.thrust;
+        UI::getInstance().update(motor_info_up);
+
+        MotorInformation motor_info_down;
+        motor_info_down.motor_id = 1;
+        motor_info_down.thrust = received_control_msg_down.thrust;
+        UI::getInstance().update(motor_info_down);
+
+        MotorInformation motor_info_left;
+        motor_info_left.motor_id = 2;
+        motor_info_left.thrust = received_control_msg_left.thrust;
+        UI::getInstance().update(motor_info_left);
+
+        MotorInformation motor_info_right;
+        motor_info_right.motor_id = 3;
+        motor_info_right.thrust = received_control_msg_right.thrust;
+        UI::getInstance().update(motor_info_right);
+
+        BatteryInformation battery_info;
+        battery_info.type = BatteryType::DUALSHOCK;
+        battery_info.percentage = PS4.Battery() * 10; // PS4.Battery() returns 0-10
+        battery_info.charging = PS4.Charging();
+        UI::getInstance().update(battery_info);
+
+        BatteryInformation controller_battery_info;
+        controller_battery_info.type = BatteryType::CONTROLLER;
+        controller_battery_info.percentage = 75; // Dummy value
+        UI::getInstance().update(controller_battery_info);
+
+
+        if (iterations >= 100)
+        {
+          // 10 seconds elapsed
+          Serial.println("[INFO] Requesting battery...");
+
+          BatteryInformation rov_battery_info;
+          rov_battery_info.type = BatteryType::ROV;
+
+          BatteryRequestMessage request;
+          uint8_t packed_request = Protocol::pack(request);
+          RS485::getInstance().send(packed_request);
+          RS485::getInstance().wait(); // Ensure data is sent
+          RS485::getInstance().rxMode(); // Switch to rx mode to receive response
+          RS485::getInstance().wait(); // Give time to switch and receive
+          RS485::getInstance().wait(); // Give time to switch and receive
+
+          int received_response = RS485::getInstance().readLast(); // Receive last byte
+
+          // Go back to tx mode
+          RS485::getInstance().txMode();
+          RS485::getInstance().wait(); // Wait the counter part to switch
+
+          if (received_response == -1)
+          {
+            // Error
+            rov_battery_info.percentage = 0;
+            Serial.println("[ERROR] No response on BatteryResquestMessage");
+          }
+          else
+          {
+            BatteryResponseMessage response;
+            if (!Protocol::unpack(static_cast<uint8_t>(received_response), response))
+            {
+              // Error, other thing received
+              rov_battery_info.percentage = 0;
+              Serial.print("[ERROR] Invalid response on BatteryResquestMessage");
+            }
+            else
+            {
+              rov_battery_info.percentage = response.percentage;
+              Serial.println("[INFO] Received battery from ROV");
+            }
+          }
+          UI::getInstance().update(rov_battery_info);
+
+          iterations = 0;
+        }
     }
-}
 
-void Controller::task_wrapper_requestBattery(void* params)
-{
-    Controller* controller = static_cast<Controller*>(params);
-    controller->task_requestBattery();
-}
+    UI::getInstance().refresh();
 
-void Controller::task_requestBattery()
-{
-    const TickType_t period = pdMS_TO_TICKS(5000); // 5 seconds
-    TickType_t last_wake_time = xTaskGetTickCount();
-
-    while (true)
-    {
-        // Take RS485 mutex
-        xSemaphoreTake(rs485_mutex, portMAX_DELAY);
-
-        // Send battery request command
-
-
-        // Release RS485 mutex
-        xSemaphoreGive(rs485_mutex);
-
-        vTaskDelayUntil(&last_wake_time, period);
-    }
+    delay(100);
 }
 
 #endif
