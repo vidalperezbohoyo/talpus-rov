@@ -67,10 +67,10 @@ void Robot::loop()
             else if (Protocol::getMessageType(byte) == MessageType::REQUEST_BATTERY)
             {
                 Serial.println("Received REQUEST_BATTERY");
-                RS485::getInstance().wait(); // Wait before responding
-                RS485::getInstance().txMode(); // Switch to tx mode to send response                
+                RS485::getInstance().txMode(); // Switch to tx mode to send response
+                RS485::getInstance().wait(); // Wait before responding              
                 processBatteryRequestMessage();
-                RS485::getInstance().wait();
+                RS485::getInstance().halfWait();
                 RS485::getInstance().rxMode(); // Switch back to rx mode
             }
             else
@@ -115,8 +115,8 @@ void Robot::processBatteryRequestMessage()
 
     // Send response
     RS485::getInstance().send(packed_response);
-    RS485::getInstance().send(packed_response);
-    RS485::getInstance().send(packed_response);
+    // RS485::getInstance().send(packed_response);
+    // RS485::getInstance().send(packed_response);
 }
 
 #endif

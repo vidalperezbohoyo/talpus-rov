@@ -22,6 +22,10 @@ void Controller::init()
 
     Serial.println("[Controller::init] Init done");
 
+    // Queues to send Structs between tasks
+    battery_response_queue_ = xQueueCreate(3 /* Max items */, sizeof(BatteryInformation));
+    control_message_queue_ = xQueueCreate(8 /* Max items */, sizeof(MotorInformation));
+
     // Wait for dualshock connection
     while (!PS4.isConnected())
     {
@@ -58,10 +62,6 @@ void Controller::init()
         1,
         nullptr
     );
-
-    // Queues to send Structs between tasks
-    battery_response_queue_ = xQueueCreate(3 /* Max items */, sizeof(BatteryInformation));
-    control_message_queue_ = xQueueCreate(8 /* Max items */, sizeof(MotorInformation));
 }
 
 void Controller::loop()
@@ -169,11 +169,10 @@ void Controller::rovBatteryTask(void* params)
         xSemaphoreTake(controller->comms_mutex_, portMAX_DELAY); // Adquire mutex
         RS485::getInstance().txMode();
         RS485::getInstance().send(packed_request);
-        RS485::getInstance().wait(); // Ensure data is sent
+        RS485::getInstance().halfWait(); // Ensure data is sent before changing Channel mode
+
         RS485::getInstance().rxMode(); // Switch to rx mode to receive response
         RS485::getInstance().wait(); // Give time to switch and receive
-        RS485::getInstance().wait(); // Give time to switch and receive
-
         int received_response = RS485::getInstance().readLast(); // Receive last byte
 
         xSemaphoreGive(controller->comms_mutex_); // Release mutex

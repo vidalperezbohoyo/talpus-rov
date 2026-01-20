@@ -17,6 +17,7 @@ public:
     // Raw byte interface
     bool available();
 
+    void halfWait();
     void wait();
 
     void send(uint8_t data);

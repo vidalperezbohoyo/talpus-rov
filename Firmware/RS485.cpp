@@ -20,6 +20,11 @@ bool RS485::available()
     return Serial1.available() > 0;
 }
 
+void RS485::halfWait()
+{
+    delay(5);
+}
+
 void RS485::wait()
 {
     delay(10);
