@@ -27,9 +27,10 @@ void Robot::init()
 
     // Lights pin
     pinMode(PIN_LIGHTS, OUTPUT);
-    analogWrite(PIN_LIGHTS, 0); // Lights off
-
+    analogWrite(PIN_LIGHTS, 0); // Lights 
+    
     Serial.begin(115200);
+   
 }
 
 void Robot::loop()
@@ -73,9 +74,19 @@ void Robot::loop()
                 RS485::getInstance().halfWait();
                 RS485::getInstance().rxMode(); // Switch back to rx mode
             }
+            else if (Protocol::getMessageType(byte) == MessageType::LIGHTS)
+            {
+                LightsMessage msg;
+                
+                // Unpack command
+                if (Protocol::unpack(byte, msg))
+                {
+                    analogWrite(PIN_LIGHTS, msg.intensity);
+                }
+            }
             else
             {
-              StatusLed::getInstance().red();
+                Serial.println("[ERROR] Unknown message");
             }
             
         }
@@ -87,8 +98,6 @@ void Robot::processControlMessage(const ControlMessage& msg)
     switch (msg.motor_id)
     {
         case 0: // Motor 1
-            StatusLed::getInstance().setRGB(0, 0, msg.thrust); // Indicate activity
-
             //analogWrite(PIN_MOTOR_1, msg.thrust);
             break;
         case 1: // Motor 2

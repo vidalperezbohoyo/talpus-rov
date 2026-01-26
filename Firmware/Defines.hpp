@@ -10,7 +10,6 @@
 #define PIN_OTA 6
 
 // Status LED pins
-#define PIN_RED    8
 #define PIN_GREEN  9
 #define PIN_BLUE   10
 
@@ -25,7 +24,7 @@
 
 // Robot pins
 #define PIN_BATTERY_ADC 5 // ADC pin for battery voltage reading. Voltage divider of 10k and 1k
-#define PIN_LIGHTS 10 // Lights pin
+#define PIN_LIGHTS 8 // Lights pin
 #define PIN_MOTOR_1 0 // Up
 #define PIN_MOTOR_2 1 // Down
 #define PIN_MOTOR_3 2 // Left
@@ -57,7 +56,7 @@ enum class MessageType : uint8_t
     CONTROL = 0b001,
     REQUEST_BATTERY = 0b010,
     RESPONSE_BATTERY = 0b011,
-    RESERVED_4 = 0b100,
+    LIGHTS = 0b100,
     RESERVED_5 = 0b101,
     RESERVED_6 = 0b110,
     RESERVED_7 = 0b111
@@ -77,6 +76,11 @@ struct BatteryRequestMessage
 struct BatteryResponseMessage
 {
     uint8_t percentage;
+};
+
+struct LightsMessage
+{
+    uint8_t intensity; // 0-255
 };
 
 /*
@@ -126,4 +130,9 @@ struct BatteryInformation
     uint8_t percentage;
     float voltage; // Not for DualShock
     bool charging; // Only for DualShock
+};
+
+struct LightsInformation
+{
+    uint8_t intensity; // 0-255
 };

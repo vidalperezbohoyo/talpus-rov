@@ -25,6 +25,7 @@ void Controller::init()
     // Queues to send Structs between tasks
     battery_response_queue_ = xQueueCreate(3 /* Max items */, sizeof(BatteryInformation));
     control_message_queue_ = xQueueCreate(8 /* Max items */, sizeof(MotorInformation));
+    lights_message_queue_ = xQueueCreate(3 /* Max items */, sizeof(LightsInformation));
 
     // Wait for dualshock connection
     while (!PS4.isConnected())
@@ -79,6 +80,12 @@ void Controller::loop()
         UI::getInstance().update(battery_info);
     }
 
+    LightsInformation lights_info;
+    while (xQueueReceive(lights_message_queue_, &lights_info, 0) == pdTRUE)
+    {
+        UI::getInstance().update(lights_info);
+    }
+
     UI::getInstance().refresh();
 }
 
@@ -99,6 +106,57 @@ void Controller::rovControlTask(void* params)
         }
 
         int8_t left_stick_y = PS4.LStickY();
+
+        bool r1_pressed = PS4.R1();
+        bool l1_pressed = PS4.L1();
+
+        // Check lights control
+        bool intensity_changed = (r1_pressed || l1_pressed);
+        
+        if (r1_pressed)
+        {
+            // Increment
+            if (controller->lights_intensity_ <= 245)
+            {
+                controller->lights_intensity_ += 10;
+            }
+            else
+            {
+                controller->lights_intensity_ = 255;
+            }
+        }
+        else if (l1_pressed)
+        {
+            // Decrement
+            if (controller->lights_intensity_ >= 10)
+            {
+                controller->lights_intensity_ -= 10;
+            }
+            else
+            {
+                controller->lights_intensity_ = 0;
+            }
+        }
+
+        if (intensity_changed)
+        {
+            // Send lights message
+            LightsMessage lights_msg;
+            lights_msg.intensity = controller->lights_intensity_;
+            uint8_t packed_lights_msg = Protocol::pack(lights_msg);
+
+            xSemaphoreTake(controller->comms_mutex_, portMAX_DELAY); // Adquire mutex
+            RS485::getInstance().txMode();
+            RS485::getInstance().send(packed_lights_msg);
+            xSemaphoreGive(controller->comms_mutex_); // Release mutex
+
+            // Update UI with what robot receives (unpacking)
+            LightsMessage received_lights_msg;
+            Protocol::unpack(packed_lights_msg, received_lights_msg);
+            LightsInformation lights_info;
+            lights_info.intensity = received_lights_msg.intensity;
+            xQueueSend(controller->lights_message_queue_, &lights_info, 0);
+        }
 
         ControlMessage original_control_msg_up;
         original_control_msg_up.motor_id = 0; // Motor 1

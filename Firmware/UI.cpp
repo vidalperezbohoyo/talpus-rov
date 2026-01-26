@@ -93,6 +93,12 @@ void UI::update(const BatteryInformation& battery_info)
     }
 }
 
+void UI::update(const LightsInformation& lights_info)
+{
+    lv_bar_set_value(lights_intensity_bar_, (int32_t)lights_info.intensity, LV_ANIM_OFF);
+    lv_label_set_text_fmt(lights_intensity_label_, "%d", (int)lights_info.intensity);
+}
+
 void UI::refresh()
 {
     // Compute how many ms elapsed since last call
@@ -231,12 +237,12 @@ void UI::createMotorsThrustContainer()
     lv_obj_align(cont, LV_ALIGN_BOTTOM_MID, 0, -5);
 
     
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
     {
         // Main container
         lv_obj_t * row = lv_obj_create(cont);
         lv_obj_set_width(row, 240);
-        lv_obj_set_height(row, 25);
+        lv_obj_set_height(row, 20);
         lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, 0);
         lv_obj_set_style_border_width(row, 0, 0);
         lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
@@ -255,7 +261,7 @@ void UI::createMotorsThrustContainer()
 
         // Bar container
         lv_obj_t * bar_container = lv_obj_create(row);
-        lv_obj_set_size(bar_container, 150, 20);
+        lv_obj_set_size(bar_container, 150, 15);
         lv_obj_set_style_bg_opa(bar_container, LV_OPA_TRANSP, 0);
         lv_obj_set_style_border_width(bar_container, 0, 0);
         lv_obj_set_style_radius(bar_container, 0, 0);
@@ -316,6 +322,17 @@ void UI::createMotorsThrustContainer()
 
                 motor_right_thust_label_ = lv_label_create(bar_container);
                 generic_bar_label = motor_right_thust_label_;
+                break;
+            }
+            case 4:
+            {
+                lv_label_set_text(label_title, "LIGHTS");
+
+                lights_intensity_bar_ = lv_bar_create(bar_container);
+                generic_bar = lights_intensity_bar_;
+
+                lights_intensity_label_ = lv_label_create(bar_container);
+                generic_bar_label = lights_intensity_label_;
                 break;
             }
 

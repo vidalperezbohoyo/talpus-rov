@@ -24,6 +24,8 @@ public:
 
     void update(const MotorInformation& motor_info);
 
+    void update(const LightsInformation& lights_info);
+
     void update(const BatteryInformation& battery_info);
 
     void refresh();
@@ -53,11 +55,13 @@ private:
     lv_obj_t* motor_down_thust_bar_;
     lv_obj_t* motor_left_thust_bar_;
     lv_obj_t* motor_right_thust_bar_;
+    lv_obj_t* lights_intensity_bar_;
 
     lv_obj_t* motor_up_thust_label_;
     lv_obj_t* motor_down_thust_label_;
     lv_obj_t* motor_left_thust_label_;
     lv_obj_t* motor_right_thust_label_;
+    lv_obj_t* lights_intensity_label_;
 
     // LVGL display buffer
     uint8_t* draw_buf_;

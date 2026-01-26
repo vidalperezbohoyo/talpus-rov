@@ -18,17 +18,11 @@ public:
 
     bool isOn() const { return on; }
 
-    void setRGB(uint8_t r, uint8_t g, uint8_t b);
-
-    void red();
     void green();
     void blue();
-    void yellow();
-    void purple();
-    void cyan();
-    void white();
-    void off();
 
+    void off();
+   
 private:
     StatusLed() = default;
     ~StatusLed() = default;
