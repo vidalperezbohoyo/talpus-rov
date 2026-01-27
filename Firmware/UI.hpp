@@ -28,6 +28,9 @@ public:
 
     void refresh();
 
+    void showDashboard();
+    void showDualshockConnectionScreen();
+
 private:
     UI(/* args */);
     ~UI();
@@ -36,8 +39,9 @@ private:
     UI(UI&&) = delete;
     UI& operator=(UI&&) = delete;
 
-    void createDashboard();
+    lv_obj_t* createDashboard();
     void createMainContainer();
+    lv_obj_t* createDualshockConnectionScreen();
 
     // Rewritable UI elements
     lv_obj_t* rov_battery_label_;
@@ -50,17 +54,8 @@ private:
     lv_obj_t* dualshock_battery_arc_;
     lv_obj_t* lights_arc_;
 
-    lv_obj_t* motor_up_thust_bar_;
-    lv_obj_t* motor_down_thust_bar_;
-    lv_obj_t* motor_left_thust_bar_;
-    lv_obj_t* motor_right_thust_bar_;
-    lv_obj_t* lights_intensity_bar_;
-
-    lv_obj_t* motor_up_thust_label_;
-    lv_obj_t* motor_down_thust_label_;
-    lv_obj_t* motor_left_thust_label_;
-    lv_obj_t* motor_right_thust_label_;
-    lv_obj_t* lights_intensity_label_;
+    lv_obj_t* dashboard_screen_;
+    lv_obj_t* connect_dualshock_screen_;
 
     // LVGL display buffer
     uint16_t* draw_buf_;

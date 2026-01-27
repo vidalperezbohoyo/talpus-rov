@@ -20,7 +20,11 @@ void UI::init()
     lv_display_t * disp;
     disp = lv_tft_espi_create(SCREEN_WIDTH, SCREEN_HEIGHT, draw_buf_, DRAW_BUF_SIZE);
 
-    createDashboard();
+    dashboard_screen_ = createDashboard();
+    connect_dualshock_screen_ = createDualshockConnectionScreen();
+
+    // Set dualshock connection screen
+    lv_scr_load(connect_dualshock_screen_);
 }
 
 void UI::update(const BatteryInformation& battery_info)
@@ -40,7 +44,7 @@ void UI::update(const BatteryInformation& battery_info)
         case BatteryType::DUALSHOCK: 
             if (battery_info.charging)
             {
-                lv_label_set_text_fmt(dualshock_battery_label_, "%d%%\nCharging", battery_info.percentage);
+                lv_label_set_text_fmt(dualshock_battery_label_, "%d%%\n%s", battery_info.percentage, LV_SYMBOL_CHARGE);
             }
             else
             {
@@ -106,13 +110,33 @@ void UI::refresh()
     //Serial.println("[DEBUG] Refreshing screen");
 }
 
-void UI::createDashboard()
+lv_obj_t* UI::createDualshockConnectionScreen()
+{
+    // Create screen
+    lv_obj_t* screen = lv_obj_create(NULL);
+
+    lv_obj_set_style_bg_color(screen, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+    lv_obj_set_style_text_color(screen, lv_color_white(), LV_PART_MAIN);
+    lv_obj_t * label = lv_label_create(screen);
+    lv_label_set_text(label, "Please connect\nDualShock4 Controller");
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_opa(label, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_center(label);
+
+    return screen;
+}
+
+lv_obj_t* UI::createDashboard()
 {
     lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), 0);
     lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
     lv_obj_set_style_text_color(lv_scr_act(), lv_color_white(), LV_PART_MAIN);
 
     createMainContainer();
+
+    return lv_scr_act();
 }
 
 void UI::createMainContainer()
@@ -232,6 +256,16 @@ void UI::createMainContainer()
             lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
         }
     }
+}
+
+void UI::showDashboard()
+{
+    lv_scr_load(dashboard_screen_);
+}
+
+void UI::showDualshockConnectionScreen()
+{
+    lv_scr_load(connect_dualshock_screen_);
 }
 
 #endif

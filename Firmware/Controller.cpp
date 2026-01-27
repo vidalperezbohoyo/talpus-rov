@@ -26,12 +26,25 @@ void Controller::init()
     battery_response_queue_ = xQueueCreate(3 /* Max items */, sizeof(BatteryInformation));
     lights_message_queue_ = xQueueCreate(3 /* Max items */, sizeof(LightsInformation));
 
+    // Show dualshock connection screen
+    UI::getInstance().showDualshockConnectionScreen();
+
     // Wait for dualshock connection
     while (!PS4.isConnected())
     {
         Serial.println("[Controller::init] Waiting for PS4 controller connection...");
+        UI::getInstance().refresh();
         delay(1000);
     }
+
+    UI::getInstance().showDashboard();
+
+    PS4.setLed(255, 255, 0); // Yellow submarine
+    PS4.setRumble(255, 255); // Small rumble to notify connection
+    PS4.sendToController();
+    delay(500);
+    PS4.setRumble(0, 0); // Stop rumble
+    PS4.sendToController();
 
     // Control task to send control messages periodically
     xTaskCreate(
@@ -174,8 +187,8 @@ void Controller::controllerBatteryTask(void* params)
 {
     Controller* controller = static_cast<Controller*>(params);
 
-    // Spin at 30 seconds
-    const TickType_t delay_ticks = pdMS_TO_TICKS(30000);
+    // Spin at 10 seconds
+    const TickType_t delay_ticks = pdMS_TO_TICKS(10000);
     while (true)
     {
         BatteryInformation controller_battery_info;
