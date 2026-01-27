@@ -22,8 +22,6 @@ public:
 
     void init();
 
-    void update(const MotorInformation& motor_info);
-
     void update(const LightsInformation& lights_info);
 
     void update(const BatteryInformation& battery_info);
@@ -39,17 +37,18 @@ private:
     UI& operator=(UI&&) = delete;
 
     void createDashboard();
-    void createBatteriesContainer();
-    void createMotorsThrustContainer();
+    void createMainContainer();
 
     // Rewritable UI elements
     lv_obj_t* rov_battery_label_;
     lv_obj_t* controller_battery_label_;
     lv_obj_t* dualshock_battery_label_;
+    lv_obj_t* lights_label_;
 
     lv_obj_t* rov_battery_arc_;
     lv_obj_t* controller_battery_arc_;
     lv_obj_t* dualshock_battery_arc_;
+    lv_obj_t* lights_arc_;
 
     lv_obj_t* motor_up_thust_bar_;
     lv_obj_t* motor_down_thust_bar_;
@@ -64,7 +63,7 @@ private:
     lv_obj_t* lights_intensity_label_;
 
     // LVGL display buffer
-    uint8_t* draw_buf_;
+    uint16_t* draw_buf_;
 
 };
 

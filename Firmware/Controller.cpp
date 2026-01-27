@@ -24,7 +24,6 @@ void Controller::init()
 
     // Queues to send Structs between tasks
     battery_response_queue_ = xQueueCreate(3 /* Max items */, sizeof(BatteryInformation));
-    control_message_queue_ = xQueueCreate(8 /* Max items */, sizeof(MotorInformation));
     lights_message_queue_ = xQueueCreate(3 /* Max items */, sizeof(LightsInformation));
 
     // Wait for dualshock connection
@@ -68,12 +67,6 @@ void Controller::init()
 void Controller::loop()
 {
     // UI updates at 10Hz  
-    MotorInformation motor_info;
-    while (xQueueReceive(control_message_queue_, &motor_info, 0) == pdTRUE)
-    {
-        UI::getInstance().update(motor_info);
-    }
-
     BatteryInformation battery_info;
     while (xQueueReceive(battery_response_queue_, &battery_info, 0) == pdTRUE)
     {
@@ -110,9 +103,12 @@ void Controller::rovControlTask(void* params)
         bool r1_pressed = PS4.R1();
         bool l1_pressed = PS4.L1();
 
+        static bool first_run = true;
+
         // Check lights control
-        bool intensity_changed = (r1_pressed || l1_pressed);
-        
+        bool intensity_changed = (r1_pressed || l1_pressed || first_run);
+        first_run = false;
+
         if (r1_pressed)
         {
             // Increment
@@ -169,17 +165,6 @@ void Controller::rovControlTask(void* params)
         RS485::getInstance().txMode();
         RS485::getInstance().send(packed_msg_up);
         xSemaphoreGive(controller->comms_mutex_); // Release mutex
-
-        // Update UI with what robot receives (unpacking)
-        ControlMessage received_control_msg_up;
-        Protocol::unpack(packed_msg_up, received_control_msg_up);
-        
-        MotorInformation motor_info_up;
-        motor_info_up.motor_id = received_control_msg_up.motor_id;
-        motor_info_up.thrust = received_control_msg_up.thrust;
-
-        // Add to queue to update UI in main task
-        xQueueSend(controller->control_message_queue_, &motor_info_up, 0);
 
         vTaskDelay(delay_ticks);
     }
