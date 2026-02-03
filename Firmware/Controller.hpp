@@ -7,6 +7,7 @@
 #include "RS485.hpp"
 #include "Defines.hpp"
 #include "UI.hpp"
+#include "Battery.hpp"
 
 class Controller
 {

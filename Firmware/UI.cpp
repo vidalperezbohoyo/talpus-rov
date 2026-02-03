@@ -19,6 +19,7 @@ void UI::init()
 
     lv_display_t * disp;
     disp = lv_tft_espi_create(SCREEN_WIDTH, SCREEN_HEIGHT, draw_buf_, DRAW_BUF_SIZE);
+    lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_180);
 
     dashboard_screen_ = createDashboard();
     connect_dualshock_screen_ = createDualshockConnectionScreen();
@@ -31,6 +32,11 @@ void UI::update(const BatteryInformation& battery_info)
 {
     lv_obj_t* arc;
 
+    // This is because float print lvgl is not working...
+    float volt = battery_info.voltage;
+    int volt_int = static_cast<int>(volt); // xx.
+    int volt_dec = static_cast<int>((volt - static_cast<float>(volt_int)) * 10.f); // 1 decimals
+
     switch (battery_info.type)
     {
         case BatteryType::ROV:
@@ -38,7 +44,14 @@ void UI::update(const BatteryInformation& battery_info)
             arc = rov_battery_arc_;
             break;
         case BatteryType::CONTROLLER:
-            lv_label_set_text_fmt(controller_battery_label_, "%d%%", battery_info.percentage);
+            lv_label_set_text_fmt(
+                controller_battery_label_,
+                "%d%%\n%d.%d V",
+                battery_info.percentage,
+                volt_int, // xx.
+                volt_dec // .yy
+            );
+
             arc = controller_battery_arc_;
             break;
         case BatteryType::DUALSHOCK: 
