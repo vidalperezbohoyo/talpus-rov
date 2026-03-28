@@ -112,72 +112,79 @@ void Controller::rovControlTask(void* params)
             continue;
         }
 
-        int8_t left_stick_y = PS4.LStickY();
+        // Control messages for ROV
+        ControlMessage motor_up_msg; motor_up_msg.motor_id = 0; // Motor 1
+        ControlMessage motor_down_msg; motor_down_msg.motor_id = 1; // Motor 2
+        ControlMessage motor_left_msg; motor_left_msg.motor_id = 2; // Motor 3
+        ControlMessage motor_right_msg; motor_right_msg.motor_id = 3; // Motor 4
+        LightsMessage lights_msg;
 
+        // PS4 readings
         bool r1_pressed = PS4.R1();
         bool l1_pressed = PS4.L1();
 
-        static bool first_run = true;
+        uint8_t r2_value = PS4.R2Value();
 
+        int8_t left_stick_x = PS4.LStickX();
+        int8_t right_stick_y = PS4.RStickY();
+
+        // Left-Right-Forward
+        
+
+
+
+
+        motor_left_msg.thrust = left_stick_x < -10 ? -left_stick_x * 2 : 0; // Deadzone of 10 and scale to 0-255
+
+        // Up-Down
+        motor_up_msg.thrust = right_stick_y > 10 ? right_stick_y * 2 : 0; // Deadzone of 10 and scale to 0-255
+        motor_down_msg.thrust = right_stick_y < -10 ? -right_stick_y * 2 : 0; // Deadzone of 10 and scale to 0-255
+        
         // Check lights control
+        static bool first_run = true;
         bool intensity_changed = (r1_pressed || l1_pressed || first_run);
         first_run = false;
 
         if (r1_pressed)
         {
-            // Increment
-            if (controller->lights_intensity_ <= 245)
-            {
-                controller->lights_intensity_ += 10;
-            }
-            else
-            {
-                controller->lights_intensity_ = 255;
-            }
+            controller->increaseLightsIntensity();
         }
         else if (l1_pressed)
         {
-            // Decrement
-            if (controller->lights_intensity_ >= 10)
-            {
-                controller->lights_intensity_ -= 10;
-            }
-            else
-            {
-                controller->lights_intensity_ = 0;
-            }
+            controller->decreaseLightsIntensity();
         }
+
+        lights_msg.intensity = controller->lights_intensity_;
 
         if (intensity_changed)
         {
-            // Send lights message
-            LightsMessage lights_msg;
-            lights_msg.intensity = controller->lights_intensity_;
-            uint8_t packed_lights_msg = Protocol::pack(lights_msg);
-
-            xSemaphoreTake(controller->comms_mutex_, portMAX_DELAY); // Adquire mutex
-            RS485::getInstance().txMode();
-            RS485::getInstance().send(packed_lights_msg);
-            xSemaphoreGive(controller->comms_mutex_); // Release mutex
-
             // Update UI with what robot receives (unpacking)
-            LightsMessage received_lights_msg;
-            Protocol::unpack(packed_lights_msg, received_lights_msg);
             LightsInformation lights_info;
-            lights_info.intensity = received_lights_msg.intensity;
+            lights_info.intensity = controller->lights_intensity_;
             xQueueSend(controller->lights_message_queue_, &lights_info, 0);
         }
 
-        ControlMessage original_control_msg_up;
-        original_control_msg_up.motor_id = 0; // Motor 1
-        original_control_msg_up.thrust = left_stick_y > 10 ? left_stick_y * 2 : 0;
-
-        uint8_t packed_msg_up = Protocol::pack(original_control_msg_up);
+        // Pack messages and send to ROV
+        uint8_t packed_msg_up = Protocol::pack(motor_up_msg);
+        uint8_t packed_msg_down = Protocol::pack(motor_down_msg);
+        uint8_t packed_msg_left = Protocol::pack(motor_left_msg);
+        uint8_t packed_msg_right = Protocol::pack(motor_right_msg);
      
         // Send data
         xSemaphoreTake(controller->comms_mutex_, portMAX_DELAY); // Adquire mutex
         RS485::getInstance().txMode();
         RS485::getInstance().send(packed_msg_up);
+        RS485::getInstance().send(packed_msg_down);
+        RS485::getInstance().send(packed_msg_left);
+        RS485::getInstance().send(packed_msg_right);
+        
+        // Pack lights message and send to ROV if intensity changed
+        if (intensity_changed)
+        {
+            uint8_t packed_lights_msg = Protocol::pack(lights_msg);
+            RS485::getInstance().send(packed_lights_msg);
+        }
+
         xSemaphoreGive(controller->comms_mutex_); // Release mutex
 
         vTaskDelay(delay_ticks);
@@ -237,11 +244,12 @@ void Controller::rovBatteryTask(void* params)
 
         BatteryInformation rov_battery_info;
         rov_battery_info.type = BatteryType::ROV;
+        rov_battery_info.percentage = 0;
+        rov_battery_info.voltage = 0.0f;
 
         if (received_response == -1)
         {
             // Error
-            rov_battery_info.percentage = 0;
             Serial.println("[ERROR] No response on BatteryResquestMessage");
         }
         else
@@ -250,12 +258,12 @@ void Controller::rovBatteryTask(void* params)
             if (!Protocol::unpack(static_cast<uint8_t>(received_response), response))
             {
                 // Error, other thing received
-                rov_battery_info.percentage = 0;
                 Serial.print("[ERROR] Invalid response on BatteryResquestMessage");
             }
             else
             {
                 rov_battery_info.percentage = response.percentage;
+                rov_battery_info.voltage = Battery::getInstance().convertPercentageToVoltage(response.percentage);  
                 Serial.println("[INFO] Received battery from ROV");
                 
                 // Add to queue to update UI in main task
@@ -265,6 +273,30 @@ void Controller::rovBatteryTask(void* params)
         }
 
         vTaskDelay(delay_ticks);
+    }
+}
+
+void Controller::increaseLightsIntensity()
+{
+    if (lights_intensity_ <= 245)
+    {
+        lights_intensity_ += 10;
+    }
+    else
+    {
+        lights_intensity_ = 255;
+    }
+}
+
+void Controller::decreaseLightsIntensity()
+{
+    if (lights_intensity_ >= 10)
+    {
+        lights_intensity_ -= 10;
+    }
+    else
+    {
+        lights_intensity_ = 0;
     }
 }
 

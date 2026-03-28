@@ -20,7 +20,14 @@ void setup()
         // Check if OTA mode
         if (OTA::requestUpdate())
         {
-            StatusLed::getInstance().blue();
+            // Blink LED fast
+            for (int i = 0; i < 10; i++)
+            {
+                StatusLed::getInstance().on();
+                delay(100);
+                StatusLed::getInstance().off();
+                delay(100);
+            }
             OTA::update(); // Will not return
         }
         robot.init();

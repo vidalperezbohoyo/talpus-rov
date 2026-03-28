@@ -13,10 +13,10 @@ public:
 
     void init();
 
-#if defined(ARDUINO_ESP32_DEV) // Only for ESP32 
     BatteryInformation info();
-#endif
 
+    float convertPercentageToVoltage(uint8_t percentage);
+    
 private:
     Battery() = default;
     ~Battery() = default;

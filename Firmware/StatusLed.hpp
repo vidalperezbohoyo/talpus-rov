@@ -16,12 +16,11 @@ public:
 
     void init();
 
-    bool isOn() const { return on; }
+    bool isOn() const { return on_; }
 
-    void green();
-    void blue();
-
+    void on();
     void off();
+    void toggle() { if (on_) off(); else on(); }
    
 private:
     StatusLed() = default;
@@ -31,6 +30,6 @@ private:
     StatusLed(StatusLed&&) = delete;
     StatusLed& operator=(StatusLed&&) = delete;
 
-    bool on = false;
+    bool on_ = false;
 };
 #endif

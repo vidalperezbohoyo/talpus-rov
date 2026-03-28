@@ -9,7 +9,9 @@ Robot::Robot()
 
 void Robot::init()
 {
-    StatusLed::getInstance().green(); // Indicate ready
+    StatusLed::getInstance().on(); // Indicate ready
+
+    Battery::getInstance().init();
 
     RS485::getInstance().init(ROBOT_PIN_RX, ROBOT_PIN_TX, ROBOT_PIN_DE_RE);
 
@@ -42,6 +44,8 @@ void Robot::loop()
     {
         if (RS485::getInstance().available())
         {
+            StatusLed::getInstance().toggle(); // Toggle LED to indicate activity
+
             int read = RS485::getInstance().read();
             if (read < 0)
             {
@@ -57,10 +61,11 @@ void Robot::loop()
                 // Unpack command
                 if (Protocol::unpack(byte, msg))
                 {
+                    // Serial.print("Received CONTROL with id: "); Serial.print(static_cast<int>(msg.motor_id)); Serial.print(" and value: "); Serial.println(static_cast<int>(msg.thrust));
+
                     processControlMessage(msg);
                 }
 
-                //Serial.print("Received CONTROL with id: "); Serial.print(static_cast<int>(msg.motor_id)); Serial.print(" and value: "); Serial.println(static_cast<int>(msg.thrust));
 
                 // Update last command time
                 last_command_time = millis();
@@ -98,16 +103,16 @@ void Robot::processControlMessage(const ControlMessage& msg)
     switch (msg.motor_id)
     {
         case 0: // Motor 1
-            //analogWrite(PIN_MOTOR_1, msg.thrust);
+            analogWrite(PIN_MOTOR_1, msg.thrust);
             break;
         case 1: // Motor 2
-            //analogWrite(PIN_MOTOR_2, msg.thrust);
+            analogWrite(PIN_MOTOR_2, msg.thrust);
             break;
         case 2: // Motor 3
-            //analogWrite(PIN_MOTOR_3, msg.thrust);
+            analogWrite(PIN_MOTOR_3, msg.thrust);
             break;
         case 3: // Motor 4
-            //analogWrite(PIN_MOTOR_4, msg.thrust);
+            analogWrite(PIN_MOTOR_4, msg.thrust);
             break;
         default:
             break;
@@ -118,14 +123,14 @@ void Robot::processBatteryRequestMessage()
 {
     // Prepare response message
     BatteryResponseMessage response;
-    response.percentage = 77;
+    BatteryInformation battery_info = Battery::getInstance().info();
+
+    response.percentage = battery_info.percentage;
 
     uint8_t packed_response = Protocol::pack(response);
 
     // Send response
     RS485::getInstance().send(packed_response);
-    // RS485::getInstance().send(packed_response);
-    // RS485::getInstance().send(packed_response);
 }
 
 #endif

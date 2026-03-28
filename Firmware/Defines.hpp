@@ -10,8 +10,7 @@
 #define PIN_OTA 6
 
 // Status LED pins
-#define PIN_GREEN  9
-#define PIN_BLUE   10
+#define PIN_STATUS_LED  5
 
 // RS485 pins
 #define ROBOT_PIN_TX 21 // TX pin -> RS485 DI pin
@@ -23,7 +22,6 @@
 #define CONTROLLER_PIN_DE_RE 4 // MAX-458 DE/RE control pin
 
 // Robot pins
-#define PIN_BATTERY_ADC 5 // ADC pin for battery voltage reading. Voltage divider of 10k and 1k
 #define PIN_LIGHTS 8 // Lights pin
 #define PIN_MOTOR_1 0 // Up
 #define PIN_MOTOR_2 1 // Down
@@ -32,6 +30,11 @@
 
 // Battery pins
 #define CONTROLLER_PIN_BAT_IN 35
+#define ROBOT_PIN_BAT_IN 4
+
+// Battery adjust
+#define ROBOT_BATTERY_ADC_MULTIPLIER 0.945f // Adjust multiplier for better voltage readings on ROV if needed
+#define CONTROLLER_BATTERY_ADC_MULTIPLIER 1.0f // Adjust multiplier for better voltage readings on Controller if needed
 
 /* 
  * Other definitions
@@ -39,18 +42,9 @@
 #define OTA_SSID "ROV"
 #define OTA_PASSWORD "123456789" // Use more than 8 characters to work!!!
 
-#define EMERGENCY_RTL_TIMEOUT_MS 3000 // Time without commands to trigger emergency RTL
-
 #define SCREEN_WIDTH 320
 #define SCREEN_HEIGHT 240
 #define DRAW_BUF_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT / 10 * (LV_COLOR_DEPTH / 8))
-
-// Battery
-#define ADC_MAX_VALUE 4095.0f // 12-bit ADC ESP32
-#define ADC_REF_VOLTAGE 3.3f // Reference voltage for ADC
-#define BATTERY_VOLTAGE_DIVIDER_RATIO ((10000.f + 3300.f) / 3300.f) // R1=10k, R2=3.3k Voltage divider ratio for battery voltage reading
-#define CONTROLLER_BATTERY_ADC_ADJUST 1.0885f // Adjust factor for controller battery voltage reading
-#define ROV_BATTERY_ADC_ADJUST 1.257f // Adjust factor for ROV battery voltage reading
 
 enum class MessageType : uint8_t
 {
@@ -90,7 +84,7 @@ struct LightsMessage
  3S Li-ion: 10.5V (0%) to 12.6V (100%)
 */
 
-const uint16_t ADC_TABLE[32] = {
+const uint16_t ADC_TABLE_ESP32_DEV[32] = {
   2937, 2995, 3055, 3122,
   3164, 3207, 3254, 3302,
   3347, 3395, 3445, 3496,
@@ -99,6 +93,18 @@ const uint16_t ADC_TABLE[32] = {
   3792, 3814, 3839, 3860,
   3888, 3901, 3922, 3943,
   3952, 3957, 3965, 3970
+};
+
+const uint16_t ADC_TABLE_ESP32_C3[32] = {
+  2782, 2825, 2862, 2906,
+  2936, 2958, 2986, 3010,
+  3038, 3066, 3090, 3125,
+  3150, 3180, 3192, 3200,
+  3215, 3230, 3245, 3260,
+  3276, 3289, 3295, 3307,
+  3322, 3325, 3338, 3343,
+  3353, 3358, 3359, 3360 
+
 };
 
 const float VOLTAGE_TABLE[32] = {

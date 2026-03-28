@@ -6,6 +6,7 @@
 #include "RS485.hpp"
 #include "Defines.hpp"
 #include "StatusLed.hpp"
+#include "Battery.hpp"
 
 class Robot
 {

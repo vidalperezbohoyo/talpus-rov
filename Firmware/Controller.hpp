@@ -23,6 +23,10 @@ public:
     static void controllerBatteryTask(void* params);
 
 private:
+    void increaseLightsIntensity();
+    void decreaseLightsIntensity();
+
+
     // Queues to send Structs between tasks
     QueueHandle_t battery_response_queue_;
     QueueHandle_t lights_message_queue_;

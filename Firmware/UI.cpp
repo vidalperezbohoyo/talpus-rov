@@ -40,7 +40,13 @@ void UI::update(const BatteryInformation& battery_info)
     switch (battery_info.type)
     {
         case BatteryType::ROV:
-            lv_label_set_text_fmt(rov_battery_label_, "%d%%", battery_info.percentage);
+            lv_label_set_text_fmt(rov_battery_label_, 
+                "%d%%\n%d.%d V",
+                battery_info.percentage,
+                volt_int, // xx.
+                volt_dec // .yy
+            );
+
             arc = rov_battery_arc_;
             break;
         case BatteryType::CONTROLLER:

@@ -4,27 +4,20 @@
 
 void StatusLed::init()
 {
-    pinMode(PIN_GREEN, OUTPUT);
-    pinMode(PIN_BLUE, OUTPUT);
+    pinMode(PIN_STATUS_LED, OUTPUT);
     off();
 }
 
-void StatusLed::green()
+void StatusLed::on()
 {
-    digitalWrite(PIN_GREEN, HIGH);
-    digitalWrite(PIN_BLUE, LOW);
-}
-
-void StatusLed::blue()
-{
-    digitalWrite(PIN_GREEN, LOW);
-    digitalWrite(PIN_BLUE, HIGH);
+    digitalWrite(PIN_STATUS_LED, HIGH);
+    on_ = true;
 }
 
 void StatusLed::off()
 {
-    digitalWrite(PIN_GREEN, LOW);
-    digitalWrite(PIN_BLUE, LOW);
+    digitalWrite(PIN_STATUS_LED, LOW);
+    on_ = false;
 }
 
 #endif
