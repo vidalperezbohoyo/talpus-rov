@@ -41,10 +41,10 @@ void Controller::init()
     UI::getInstance().showDashboard();
 
     PS4.setLed(255, 255, 0); // Yellow submarine
-    PS4.setRumble(255, 255); // Small rumble to notify connection
-    PS4.sendToController();
-    delay(500);
-    PS4.setRumble(0, 0); // Stop rumble
+    // PS4.setRumble(255, 255); // Small rumble to notify connection
+    // PS4.sendToController();
+    // delay(500);
+    // PS4.setRumble(0, 0); // Stop rumble
     PS4.sendToController();
 
     // Control task to send control messages periodically
@@ -54,7 +54,7 @@ void Controller::init()
         4096,
         this, /* Parameter passed as input of the task */
         1,
-        nullptr
+        &rov_control_task_
     );
 
     // Battery task to request battery periodically
@@ -64,7 +64,7 @@ void Controller::init()
         4096,
         this, /* Parameter passed as input of the task */
         1,
-        nullptr
+        &rov_battery_task_
     );
 
     // Battery task to request battery periodically
@@ -74,7 +74,7 @@ void Controller::init()
         4096,
         this, /* Parameter passed as input of the task */
         1,
-        nullptr
+        &controller_battery_task_
     );
 }
 
@@ -258,7 +258,7 @@ void Controller::rovBatteryTask(void* params)
             if (!Protocol::unpack(static_cast<uint8_t>(received_response), response))
             {
                 // Error, other thing received
-                Serial.print("[ERROR] Invalid response on BatteryResquestMessage");
+                Serial.println("[ERROR] Invalid response on BatteryResquestMessage");
             }
             else
             {

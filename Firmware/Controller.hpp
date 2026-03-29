@@ -26,6 +26,11 @@ private:
     void increaseLightsIntensity();
     void decreaseLightsIntensity();
 
+    // Task handles
+    TaskHandle_t rov_control_task_;
+    TaskHandle_t rov_battery_task_;
+    TaskHandle_t controller_battery_task_;
+
 
     // Queues to send Structs between tasks
     QueueHandle_t battery_response_queue_;

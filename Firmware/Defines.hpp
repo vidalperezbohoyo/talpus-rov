@@ -32,10 +32,6 @@
 #define CONTROLLER_PIN_BAT_IN 35
 #define ROBOT_PIN_BAT_IN 4
 
-// Battery adjust
-#define ROBOT_BATTERY_ADC_MULTIPLIER 0.945f // Adjust multiplier for better voltage readings on ROV if needed
-#define CONTROLLER_BATTERY_ADC_MULTIPLIER 1.0f // Adjust multiplier for better voltage readings on Controller if needed
-
 /* 
  * Other definitions
  */
@@ -96,14 +92,14 @@ const uint16_t ADC_TABLE_ESP32_DEV[32] = {
 };
 
 const uint16_t ADC_TABLE_ESP32_C3[32] = {
-  2782, 2825, 2862, 2906,
-  2936, 2958, 2986, 3010,
-  3038, 3066, 3090, 3125,
-  3150, 3180, 3192, 3200,
-  3215, 3230, 3245, 3260,
-  3276, 3289, 3295, 3307,
-  3322, 3325, 3338, 3343,
-  3353, 3358, 3359, 3360 
+  2954, 2991, 3036, 3084,
+  3112, 3145, 3168, 3193,
+  3226, 3258, 3287, 3320,
+  3341, 3385, 3390, 3402,
+  3418, 3435, 3448, 3460,
+  3470, 3483, 3501, 3502,
+  3510, 3518, 3530, 3550,
+  3556, 3558, 3560, 3561
 
 };
 

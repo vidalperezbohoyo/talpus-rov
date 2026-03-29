@@ -279,11 +279,13 @@ void UI::createMainContainer()
 
 void UI::showDashboard()
 {
+    Serial.println("[UI::showDashboard] Showing dashboard");
     lv_scr_load(dashboard_screen_);
 }
 
 void UI::showDualshockConnectionScreen()
 {
+    Serial.println("[UI::showDualshockConnectionScreen] Showing DualShock connection screen");
     lv_scr_load(connect_dualshock_screen_);
 }
 
