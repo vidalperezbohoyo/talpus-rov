@@ -23,6 +23,7 @@ void UI::init()
 
     dashboard_screen_ = createDashboard();
     connect_dualshock_screen_ = createDualshockConnectionScreen();
+    advanced_screen_ = createAdvancedScreen();
 
     // Set dualshock connection screen
     lv_scr_load(connect_dualshock_screen_);
@@ -158,6 +159,24 @@ lv_obj_t* UI::createDashboard()
     return lv_scr_act();
 }
 
+lv_obj_t* UI::createAdvancedScreen()
+{
+    // Create screen
+    lv_obj_t* screen = lv_obj_create(NULL);
+
+    lv_obj_set_style_bg_color(screen, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+    lv_obj_set_style_text_color(screen, lv_color_white(), LV_PART_MAIN);
+    lv_obj_t * label = lv_label_create(screen);
+    lv_label_set_text(label, "Advanced screen");
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_opa(label, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_center(label);
+
+    return screen;
+}
+
 void UI::createMainContainer()
 {
     lv_obj_t * cont = lv_obj_create(lv_scr_act());
@@ -289,4 +308,9 @@ void UI::showDualshockConnectionScreen()
     lv_scr_load(connect_dualshock_screen_);
 }
 
+void UI::showAdvancedScreen()
+{
+    Serial.println("[UI::showAdvancedScreen] Showing advanced screen");
+    lv_scr_load(advanced_screen);
+}
 #endif

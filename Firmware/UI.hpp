@@ -30,6 +30,7 @@ public:
 
     void showDashboard();
     void showDualshockConnectionScreen();
+    void showAdvancedScreen();
 
 private:
     UI(/* args */);
@@ -42,6 +43,7 @@ private:
     lv_obj_t* createDashboard();
     void createMainContainer();
     lv_obj_t* createDualshockConnectionScreen();
+    lv_obj_t* createAdvancedScreen();
 
     // Rewritable UI elements
     lv_obj_t* rov_battery_label_;
@@ -56,6 +58,7 @@ private:
 
     lv_obj_t* dashboard_screen_;
     lv_obj_t* connect_dualshock_screen_;
+    lv_obj_t* advanced_screen_;
 
     // LVGL display buffer
     uint16_t* draw_buf_;

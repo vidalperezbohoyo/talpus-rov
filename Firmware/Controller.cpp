@@ -112,44 +112,75 @@ void Controller::rovControlTask(void* params)
             continue;
         }
 
-        // Control messages for ROV
+        // Create control messages for ROV
         ControlMessage motor_up_msg; motor_up_msg.motor_id = 0; // Motor 1
         ControlMessage motor_down_msg; motor_down_msg.motor_id = 1; // Motor 2
         ControlMessage motor_left_msg; motor_left_msg.motor_id = 2; // Motor 3
         ControlMessage motor_right_msg; motor_right_msg.motor_id = 3; // Motor 4
         LightsMessage lights_msg;
 
-        // PS4 readings
-        bool r1_pressed = PS4.R1();
-        bool l1_pressed = PS4.L1();
+        // Controller readings
+        bool increase_light_pressed = PS4.R1();
+        bool decrease_light_pressed = PS4.L1();
+        
+        int8_t yaw_stick = PS4.LStickX();
+        int8_t up_down_stick = PS4.LStickY();
+        int8_t fordward_stick = PS4.RStickY();
 
-        uint8_t r2_value = PS4.R2Value();
+        bool activate_advanced_screen = PS4.Options();
+        bool deactivate_advanced_screen = PS4.Share();
+        
+        if (activate_advanced_screen)
+        {
+            UI::getInstance().showAdvancedScreen();
+        }
 
-        int8_t left_stick_x = PS4.LStickX();
-        int8_t right_stick_y = PS4.RStickY();
+        if (deactivate_advanced_screen)
+        {
+            UI::getInstance().showDashboard();
+        }
 
         // Left-Right-Forward
+        motor_left_msg.thrust = 0;
+        motor_right_msg.thrust = 0;
+
+        uint8_t available_thrust = 255;
+        if (yaw_stick > JOYSTICK_DEADZONE)
+        {
+            // Turning right
+            motor_left_msg.thrust = yaw_stick * 2;
+
+            // Compute available thrust
+            available_thrust = 255 - motor_left_msg.thrust;
+        }
+        else if (yaw_stick < JOYSTICK_DEADZONE)
+        {
+            // Turning right
+            motor_left_msg.thrust = -yaw_stick * 2;
+            
+            // Compute available thrust
+            available_thrust = 255 + motor_left_msg.thrust;
+        }
+
+        float fordward_percent= static_cast<float>(std::abs(fordward_stick)) / 127.0f; // 0.0 to 1.0
         
-
-
-
-
-        motor_left_msg.thrust = left_stick_x < -10 ? -left_stick_x * 2 : 0; // Deadzone of 10 and scale to 0-255
-
+        motor_left_msg.thrust += available_thrust * fordward_percent;
+        motor_right_msg.thrust += available_thrust * fordward_percent;
+        
         // Up-Down
-        motor_up_msg.thrust = right_stick_y > 10 ? right_stick_y * 2 : 0; // Deadzone of 10 and scale to 0-255
-        motor_down_msg.thrust = right_stick_y < -10 ? -right_stick_y * 2 : 0; // Deadzone of 10 and scale to 0-255
+        motor_up_msg.thrust = up_down_stick > 10 ? up_down_stick * 2 : 0; // Deadzone of 10 and scale to 0-255
+        motor_down_msg.thrust = up_down_stick < -10 ? -up_down_stick * 2 : 0; // Deadzone of 10 and scale to 0-255
         
         // Check lights control
         static bool first_run = true;
-        bool intensity_changed = (r1_pressed || l1_pressed || first_run);
+        bool intensity_changed = (increase_light_pressed || decrease_light_pressed || first_run);
         first_run = false;
 
-        if (r1_pressed)
+        if (increase_light_pressed)
         {
             controller->increaseLightsIntensity();
         }
-        else if (l1_pressed)
+        else if (decrease_light_pressed)
         {
             controller->decreaseLightsIntensity();
         }
