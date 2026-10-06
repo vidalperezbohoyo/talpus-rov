@@ -44,7 +44,6 @@ void Robot::loop()
     {
         if (RS485::getInstance().available())
         {
-            StatusLed::getInstance().toggle(); // Toggle LED to indicate activity
 
             int read = RS485::getInstance().read();
             if (read < 0)
@@ -65,7 +64,6 @@ void Robot::loop()
 
                     processControlMessage(msg);
                 }
-
 
                 // Update last command time
                 last_command_time = millis();
@@ -88,6 +86,11 @@ void Robot::loop()
                 {
                     analogWrite(PIN_LIGHTS, msg.intensity);
                 }
+            }
+            else if (Protocol::getMessageType(byte) == MessageType::OTA_UPDATE)
+            {
+                Serial.println("Received OTA_UPDATE command, entering OTA mode...");
+                OTA::update(); // Will not return
             }
             else
             {
@@ -113,6 +116,7 @@ void Robot::processControlMessage(const ControlMessage& msg)
             break;
         case 3: // Motor 4
             analogWrite(PIN_MOTOR_4, msg.thrust);
+            StatusLed::getInstance().toggle(); // Toggle LED to indicate activity
             break;
         default:
             break;

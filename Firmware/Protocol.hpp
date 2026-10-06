@@ -13,10 +13,12 @@ public:
     static uint8_t pack(const BatteryResponseMessage& message);
     static uint8_t pack(const BatteryRequestMessage& message);
     static uint8_t pack(const LightsMessage& message);
+    static uint8_t pack(const OTAUpdateMessage& message);
 
     static bool unpack(const uint8_t& byte, ControlMessage& message);
     static bool unpack(const uint8_t& byte, BatteryResponseMessage& message);
     static bool unpack(const uint8_t& byte, BatteryRequestMessage& message);
     static bool unpack(const uint8_t& byte, LightsMessage& message);
+    static bool unpack(const uint8_t& byte, OTAUpdateMessage& message);
 
 };

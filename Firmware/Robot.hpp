@@ -7,6 +7,7 @@
 #include "Defines.hpp"
 #include "StatusLed.hpp"
 #include "Battery.hpp"
+#include "OTA.hpp"
 
 class Robot
 {

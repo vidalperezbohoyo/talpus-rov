@@ -67,6 +67,18 @@ uint8_t Protocol::pack(const LightsMessage& message)
     return byte;
 }
 
+uint8_t Protocol::pack(const OTAUpdateMessage& message)
+{
+    uint8_t byte = 0;
+
+    // Set message type to OTA_UPDATE (first 3 bits)
+    byte |= (static_cast<uint8_t>(MessageType::OTA_UPDATE) & 0b00000111) << 5;
+
+    // No additional data for OTA update, remaining bits are 0
+
+    return byte;
+}
+
 bool Protocol::unpack(const uint8_t& byte, BatteryResponseMessage& message)
 {
     if (getMessageType(byte) != MessageType::RESPONSE_BATTERY)
@@ -152,6 +164,19 @@ bool Protocol::unpack(const uint8_t& byte, LightsMessage& message)
     // Extract lights intensity (last 5 bits)
     message.intensity = static_cast<uint8_t>(byte & 0b00011111);
     message.intensity = static_cast<uint8_t>((message.intensity * 255) / 31);
+
+    return true;
+}
+
+bool Protocol::unpack(const uint8_t& byte, OTAUpdateMessage& message)
+{
+    if (getMessageType(byte) != MessageType::OTA_UPDATE)
+    {
+        Serial.print("[ERROR] Invalid header on OTAUpdateMessage unpack: "); Serial.println(static_cast<int>(getMessageType(byte)));
+        return false; // Not an OTA update message
+    }
+
+    // No additional data to extract for OTA update
 
     return true;
 }

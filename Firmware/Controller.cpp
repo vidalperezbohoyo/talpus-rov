@@ -129,7 +129,24 @@ void Controller::rovControlTask(void* params)
 
         bool activate_advanced_screen = PS4.Options();
         bool deactivate_advanced_screen = PS4.Share();
-        
+        bool force_ota = PS4.Touchpad();
+
+        // Check force OTA button
+        if (force_ota)
+        {
+            Serial.println("[Controller::rovControlTask] OTA button pressed, forcing OTA mode on ROV...");
+            OTAUpdateMessage ota_msg;
+            uint8_t packed_ota_msg = Protocol::pack(ota_msg);
+
+            xSemaphoreTake(controller->comms_mutex_, portMAX_DELAY); // Adquire mutex
+            RS485::getInstance().txMode();
+            RS485::getInstance().send(packed_ota_msg);
+            xSemaphoreGive(controller->comms_mutex_); // Release mutex
+
+            vTaskDelay(delay_ticks);
+            continue; // Skip the rest of the loop to avoid sending other commands
+        }
+
         if (activate_advanced_screen)
         {
             UI::getInstance().showAdvancedScreen();
@@ -139,6 +156,16 @@ void Controller::rovControlTask(void* params)
         {
             UI::getInstance().showDashboard();
         }
+
+        Serial.printf(
+            "Min free heap: %u\n",
+            ESP.getMinFreeHeap()
+        );
+
+        Serial.printf(
+    "Free heap: %u\n",
+    ESP.getFreeHeap()
+);
 
         // Left-Right-Forward
         motor_left_msg.thrust = 0;

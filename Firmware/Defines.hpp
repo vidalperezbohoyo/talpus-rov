@@ -42,6 +42,8 @@
 #define SCREEN_HEIGHT 240
 #define DRAW_BUF_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT / 10 * (LV_COLOR_DEPTH / 8))
 
+#define JOYSTICK_DEADZONE 10 // Threshold for the joystick center position
+
 enum class MessageType : uint8_t
 {
     EMPTY = 0b000,
@@ -49,7 +51,7 @@ enum class MessageType : uint8_t
     REQUEST_BATTERY = 0b010,
     RESPONSE_BATTERY = 0b011,
     LIGHTS = 0b100,
-    RESERVED_5 = 0b101,
+    OTA_UPDATE = 0b101,
     RESERVED_6 = 0b110,
     RESERVED_7 = 0b111
 };
@@ -58,6 +60,11 @@ struct ControlMessage
 {
     uint8_t motor_id; // 0-3
     uint8_t thrust;   // 0-255
+};
+
+struct OTAUpdateMessage
+{
+    // Empty, just the type is needed to trigger OTA mode
 };
 
 struct BatteryRequestMessage

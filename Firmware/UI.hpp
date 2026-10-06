@@ -26,6 +26,8 @@ public:
 
     void update(const BatteryInformation& battery_info);
 
+    void update(const MotorInformation& motor_info);
+
     void refresh();
 
     void showDashboard();

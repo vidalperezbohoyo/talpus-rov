@@ -14,6 +14,13 @@ bool OTA::requestUpdate()
 
 void OTA::update()
 {
+    // Blink LED to indicate OTA mode
+    for (int i = 0; i < 1000; i++)
+    {
+        StatusLed::getInstance().toggle();
+        delay(50);
+    }
+
     const char* ssid = OTA_SSID;
     const char* password = OTA_PASSWORD;
 

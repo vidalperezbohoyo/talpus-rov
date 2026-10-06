@@ -117,6 +117,11 @@ void UI::update(const LightsInformation& lights_info)
     lv_obj_set_style_arc_opa(lights_arc_, LV_OPA_30, LV_PART_MAIN);
 }
 
+void UI::update(const MotorInformation& motor_info)
+{
+
+}
+
 void UI::refresh()
 {
     // Compute how many ms elapsed since last call
@@ -161,18 +166,162 @@ lv_obj_t* UI::createDashboard()
 
 lv_obj_t* UI::createAdvancedScreen()
 {
-    // Create screen
     lv_obj_t* screen = lv_obj_create(NULL);
 
+    // -------------------------------------------------------------------------
+    // Screen
+    // -------------------------------------------------------------------------
     lv_obj_set_style_bg_color(screen, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
-    lv_obj_set_style_text_color(screen, lv_color_white(), LV_PART_MAIN);
-    lv_obj_t * label = lv_label_create(screen);
-    lv_label_set_text(label, "Advanced screen");
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_opa(label, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
-    lv_obj_center(label);
+    lv_obj_set_style_text_color(screen, lv_color_white(), 0);
+
+    // -------------------------------------------------------------------------
+    // Title
+    // -------------------------------------------------------------------------
+    lv_obj_t* title = lv_label_create(screen);
+    lv_label_set_text(title, "ADVANCED");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(title, lv_color_white(), 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+
+    // -------------------------------------------------------------------------
+    // Helper to create a read-only value slider
+    // -------------------------------------------------------------------------
+    auto createSlider = [](lv_obj_t* parent,
+                           const char* name,
+                           uint8_t value,
+                           lv_color_t color,
+                           int y) -> lv_obj_t*
+    {
+        // Container
+        lv_obj_t* container = lv_obj_create(parent);
+
+        lv_obj_set_size(container, 210, 45);
+        lv_obj_align(container, LV_ALIGN_TOP_MID, 0, y);
+
+        lv_obj_set_style_bg_color(container, lv_color_hex(0x151515), 0);
+        lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(container, 0, 0);
+        lv_obj_set_style_radius(container, 6, 0);
+        lv_obj_set_style_pad_all(container, 5, 0);
+
+        // Label
+        lv_obj_t* label = lv_label_create(container);
+        lv_label_set_text(label, name);
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(label, lv_color_white(), 0);
+        lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
+
+        // Value
+        lv_obj_t* valueLabel = lv_label_create(container);
+
+        char text[16];
+        snprintf(text, sizeof(text), "%u  %u%%",
+                 value,
+                 (unsigned)((value * 100UL) / 255UL));
+
+        lv_label_set_text(valueLabel, text);
+        lv_obj_set_style_text_font(valueLabel, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(valueLabel, color, 0);
+        lv_obj_align(valueLabel, LV_ALIGN_TOP_RIGHT, 0, 0);
+
+        // Slider
+        lv_obj_t* slider = lv_slider_create(container);
+
+        lv_obj_set_width(slider, 190);
+        lv_obj_set_height(slider, 8);
+
+        lv_slider_set_range(slider, 0, 255);
+        lv_slider_set_value(slider, value, LV_ANIM_OFF);
+
+        // Read only
+        lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_state(slider, LV_STATE_FOCUSED);
+
+        // Background
+        lv_obj_set_style_bg_color(
+            slider,
+            lv_color_hex(0x303030),
+            LV_PART_MAIN
+        );
+
+        lv_obj_set_style_bg_opa(
+            slider,
+            LV_OPA_COVER,
+            LV_PART_MAIN
+        );
+
+        // Indicator
+        lv_obj_set_style_bg_color(
+            slider,
+            color,
+            LV_PART_INDICATOR
+        );
+
+        lv_obj_set_style_bg_opa(
+            slider,
+            LV_OPA_COVER,
+            LV_PART_INDICATOR
+        );
+
+        // Knob
+        lv_obj_set_style_bg_color(
+            slider,
+            color,
+            LV_PART_KNOB
+        );
+
+        lv_obj_set_size(
+            slider,
+            10,
+            10
+        );
+
+        lv_obj_align(
+            slider,
+            LV_ALIGN_BOTTOM_MID,
+            0,
+            -1
+        );
+
+        return slider;
+    };
+
+    // -------------------------------------------------------------------------
+    // Sliders
+    // -------------------------------------------------------------------------
+
+    createSlider(
+        screen,
+        "CHANNEL 1",
+        64,
+        lv_color_hex(0x00BFFF),
+        40
+    );
+
+    createSlider(
+        screen,
+        "CHANNEL 2",
+        128,
+        lv_color_hex(0x00E676),
+        90
+    );
+
+    createSlider(
+        screen,
+        "CHANNEL 3",
+        192,
+        lv_color_hex(0xFFB300),
+        140
+    );
+
+    createSlider(
+        screen,
+        "CHANNEL 4",
+        255,
+        lv_color_hex(0xFF5252),
+        190
+    );
 
     return screen;
 }
@@ -311,6 +460,6 @@ void UI::showDualshockConnectionScreen()
 void UI::showAdvancedScreen()
 {
     Serial.println("[UI::showAdvancedScreen] Showing advanced screen");
-    lv_scr_load(advanced_screen);
+    lv_scr_load(advanced_screen_);
 }
 #endif

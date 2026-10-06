@@ -8,6 +8,7 @@
 #include <ElegantOTA.h>
 
 #include "Defines.hpp"
+#include "StatusLed.hpp"
 
 class OTA
 {
