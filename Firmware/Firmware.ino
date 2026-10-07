@@ -5,8 +5,8 @@
     #include "OTA.hpp"
     Robot robot;
 #elif defined(ARDUINO_ESP32_DEV)
-    #include "Controller.hpp"
-    Controller controller;
+    #include "GroundStation.hpp"
+    GroundStation controller;
 #else
     #error "Unsupported platform"
 #endif

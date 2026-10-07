@@ -42,7 +42,9 @@
 #define SCREEN_HEIGHT 240
 #define DRAW_BUF_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT / 10 * (LV_COLOR_DEPTH / 8))
 
-#define JOYSTICK_DEADZONE 10 // Threshold for the joystick center position
+#define JOYSTICK_DEADZONE 20 // Threshold for the joystick center position
+#define JOYSTICK_MAX 500
+#define JOYSTICK_MIN -500
 
 enum class MessageType : uint8_t
 {

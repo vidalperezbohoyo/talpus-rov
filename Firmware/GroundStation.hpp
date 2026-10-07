@@ -3,16 +3,16 @@
 #if defined(ARDUINO_ESP32_DEV) // Only for ESP32
 
 #include "Arduino.h"
-#include <PS4Controller.h>
+#include <Bluepad32.h>
 #include "RS485.hpp"
 #include "Defines.hpp"
 #include "UI.hpp"
 #include "Battery.hpp"
 
-class Controller
+class GroundStation
 {
 public:
-    Controller();
+    GroundStation();
 
     void init();
 
@@ -26,6 +26,9 @@ private:
     void increaseLightsIntensity();
     void decreaseLightsIntensity();
 
+    static void onConnectedController(ControllerPtr ctl);
+    static void onDisconnectedController(ControllerPtr ctl);
+
     // Task handles
     TaskHandle_t rov_control_task_;
     TaskHandle_t rov_battery_task_;
@@ -35,12 +38,20 @@ private:
     // Queues to send Structs between tasks
     QueueHandle_t battery_response_queue_;
     QueueHandle_t lights_message_queue_;
+    QueueHandle_t motor_message_queue_;
 
     // Mutex for communication access
     SemaphoreHandle_t comms_mutex_;
 
     // Other variables
     uint8_t lights_intensity_ = 0;
+
+    // Remote controller
+    ControllerPtr gamepad_ = nullptr;
+
+    // Singleton instance
+    static GroundStation* instance_;
+
 };
 
 #endif

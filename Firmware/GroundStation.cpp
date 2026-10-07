@@ -1,51 +1,56 @@
 #if defined(ARDUINO_ESP32_DEV) // Only for ESP32
 
-#include "Controller.hpp"
+#include "GroundStation.hpp"
 
-Controller::Controller()
+GroundStation* GroundStation::instance_ = nullptr;
+
+GroundStation::GroundStation()
 {
 
 }
 
-void Controller::init()
+void GroundStation::init()
 {
+    instance_ = this;
+
     RS485::getInstance().init(CONTROLLER_PIN_RX, CONTROLLER_PIN_TX, CONTROLLER_PIN_DE_RE);
 
     Serial.begin(115200);
-    Serial.println("[Controller::init] Init start");
+    Serial.println("[GroundStation::init] Init start");
 
     UI::getInstance().init();
     Battery::getInstance().init();
 
-    PS4.begin("e0:d4:e8:72:14:37");
+    // Init gamepad
+    BP32.setup(
+        &onConnectedController,
+        &onDisconnectedController
+    );
 
     comms_mutex_ = xSemaphoreCreateMutex();
 
-    Serial.println("[Controller::init] Init done");
+    Serial.println("[GroundStation::init] Init done");
 
     // Queues to send Structs between tasks
     battery_response_queue_ = xQueueCreate(3 /* Max items */, sizeof(BatteryInformation));
     lights_message_queue_ = xQueueCreate(3 /* Max items */, sizeof(LightsInformation));
+    motor_message_queue_ = xQueueCreate(8 /* Max items */, sizeof(MotorInformation));
 
     // Show dualshock connection screen
-    UI::getInstance().showDualshockConnectionScreen();
+    UI::getInstance().showGamepadConnectionScreen();
 
     // Wait for dualshock connection
-    while (!PS4.isConnected())
+    while (gamepad_ == nullptr || !gamepad_->isConnected())
     {
-        Serial.println("[Controller::init] Waiting for PS4 controller connection...");
+        Serial.println("[GroundStation::init] Waiting for controller connection...");
         UI::getInstance().refresh();
+        BP32.update();
         delay(1000);
     }
 
     UI::getInstance().showDashboard();
 
-    PS4.setLed(255, 255, 0); // Yellow submarine
-    // PS4.setRumble(255, 255); // Small rumble to notify connection
-    // PS4.sendToController();
-    // delay(500);
-    // PS4.setRumble(0, 0); // Stop rumble
-    PS4.sendToController();
+    //gamepad_->setLed(255, 255, 0); // Yellow submarine
 
     // Control task to send control messages periodically
     xTaskCreate(
@@ -78,7 +83,7 @@ void Controller::init()
     );
 }
 
-void Controller::loop()
+void GroundStation::loop()
 {
     // UI updates at 10Hz  
     BatteryInformation battery_info;
@@ -93,24 +98,33 @@ void Controller::loop()
         UI::getInstance().update(lights_info);
     }
 
+    MotorInformation motor_info;
+    while (xQueueReceive(motor_message_queue_, &motor_info, 0) == pdTRUE)
+    {
+        UI::getInstance().update(motor_info);
+    }
+
     UI::getInstance().refresh();
 }
 
-void Controller::rovControlTask(void* params)
+void GroundStation::rovControlTask(void* params)
 {
-    Controller* controller = static_cast<Controller*>(params);
+    GroundStation* controller = static_cast<GroundStation*>(params);
 
     // Spin at 10Hz
     const TickType_t delay_ticks = pdMS_TO_TICKS(100);
     while (true)
     {
-        // Read from DualShock4
-        if (!PS4.isConnected())
+        // Read from gamepad
+        if (!controller->gamepad_->isConnected())
         {
-            Serial.println("[Controller::rovControlTask] PS4 Controller lost!");
+            Serial.println("[GroundStation::rovControlTask] Gamepad lost!");
+            BP32.update(); // Update to check if gamepad is reconnected
             vTaskDelay(delay_ticks);
             continue;
         }
+
+        BP32.update(); // Update gamepad state
 
         // Create control messages for ROV
         ControlMessage motor_up_msg; motor_up_msg.motor_id = 0; // Motor 1
@@ -119,22 +133,31 @@ void Controller::rovControlTask(void* params)
         ControlMessage motor_right_msg; motor_right_msg.motor_id = 3; // Motor 4
         LightsMessage lights_msg;
 
-        // Controller readings
-        bool increase_light_pressed = PS4.R1();
-        bool decrease_light_pressed = PS4.L1();
-        
-        int8_t yaw_stick = PS4.LStickX();
-        int8_t up_down_stick = PS4.LStickY();
-        int8_t fordward_stick = PS4.RStickY();
+        // GroundStation readings
+        bool increase_light_pressed = controller->gamepad_->r1();
+        bool decrease_light_pressed = controller->gamepad_->l1();
 
-        bool activate_advanced_screen = PS4.Options();
-        bool deactivate_advanced_screen = PS4.Share();
-        bool force_ota = PS4.Touchpad();
+        int yaw_stick = controller->gamepad_->axisX();
+        int up_down_stick = - controller->gamepad_->axisY();
+        int fordward_stick = - controller->gamepad_->axisRY();
+
+        Serial.printf("[GroundStation::rovControlTask] Joystick readings: Yaw: %d, Up/Down: %d, Forward: %d\n", yaw_stick, up_down_stick, fordward_stick);
+
+        // Truncate to 500
+        yaw_stick = std::max(-JOYSTICK_MAX, std::min(yaw_stick, JOYSTICK_MAX));
+        up_down_stick = std::max(-JOYSTICK_MAX, std::min(up_down_stick, JOYSTICK_MAX));
+        fordward_stick = std::max(-JOYSTICK_MAX, std::min(fordward_stick, JOYSTICK_MAX));
+
+        Serial.printf("[GroundStation::rovControlTask] Clamped joystick readings: Yaw: %d, Up/Down: %d, Forward: %d\n", yaw_stick, up_down_stick, fordward_stick);
+        
+        bool options = controller->gamepad_->miscButtons() & 0x04;
+        bool share   = controller->gamepad_->miscButtons() & 0x02;
+        bool force_ota = false;
 
         // Check force OTA button
         if (force_ota)
         {
-            Serial.println("[Controller::rovControlTask] OTA button pressed, forcing OTA mode on ROV...");
+            Serial.println("[GroundStation::rovControlTask] OTA button pressed, forcing OTA mode on ROV...");
             OTAUpdateMessage ota_msg;
             uint8_t packed_ota_msg = Protocol::pack(ota_msg);
 
@@ -147,57 +170,69 @@ void Controller::rovControlTask(void* params)
             continue; // Skip the rest of the loop to avoid sending other commands
         }
 
-        if (activate_advanced_screen)
+        if (options)
         {
-            UI::getInstance().showAdvancedScreen();
+            UI::getInstance().showMotorThurstScreen();
         }
 
-        if (deactivate_advanced_screen)
+        if (share)
         {
             UI::getInstance().showDashboard();
         }
-
-        Serial.printf(
-            "Min free heap: %u\n",
-            ESP.getMinFreeHeap()
-        );
-
-        Serial.printf(
-    "Free heap: %u\n",
-    ESP.getFreeHeap()
-);
 
         // Left-Right-Forward
         motor_left_msg.thrust = 0;
         motor_right_msg.thrust = 0;
 
-        uint8_t available_thrust = 255;
+        int available_thrust = 255;
         if (yaw_stick > JOYSTICK_DEADZONE)
         {
             // Turning right
-            motor_left_msg.thrust = yaw_stick * 2;
+            motor_left_msg.thrust = yaw_stick / 2;
 
             // Compute available thrust
             available_thrust = 255 - motor_left_msg.thrust;
         }
-        else if (yaw_stick < JOYSTICK_DEADZONE)
+        else if (yaw_stick < -JOYSTICK_DEADZONE)
         {
-            // Turning right
-            motor_left_msg.thrust = -yaw_stick * 2;
+            // Turning left
+            motor_right_msg.thrust = (-yaw_stick) / 2;
             
             // Compute available thrust
-            available_thrust = 255 + motor_left_msg.thrust;
+            available_thrust = 255 - motor_right_msg.thrust;
         }
 
-        float fordward_percent= static_cast<float>(std::abs(fordward_stick)) / 127.0f; // 0.0 to 1.0
+        float fordward_percent= static_cast<float>(std::abs(fordward_stick)) / static_cast<float>(JOYSTICK_MAX); // 0.0 to 1.0
         
         motor_left_msg.thrust += available_thrust * fordward_percent;
         motor_right_msg.thrust += available_thrust * fordward_percent;
         
         // Up-Down
-        motor_up_msg.thrust = up_down_stick > 10 ? up_down_stick * 2 : 0; // Deadzone of 10 and scale to 0-255
-        motor_down_msg.thrust = up_down_stick < -10 ? -up_down_stick * 2 : 0; // Deadzone of 10 and scale to 0-255
+        motor_up_msg.thrust = up_down_stick > JOYSTICK_DEADZONE ? up_down_stick / 2 : 0; // Deadzone of JOYSTICK_DEADZONE and scale to 0-255
+        motor_down_msg.thrust = up_down_stick < -JOYSTICK_DEADZONE ? -up_down_stick / 2 : 0; // Deadzone of JOYSTICK_DEADZONE and scale to 0-255
         
+        // Update UI with what robot receives (unpacking)
+        MotorInformation motor_info;
+        motor_info.motor_id = 0; // Motor 1
+        motor_info.thrust = motor_up_msg.thrust;
+        xQueueSend(controller->motor_message_queue_, &motor_info, 0);
+
+        motor_info.motor_id = 1; // Motor 2
+        motor_info.thrust = motor_down_msg.thrust;
+        xQueueSend(controller->motor_message_queue_, &motor_info, 0);
+
+        motor_info.motor_id = 2; // Motor 3
+        motor_info.thrust = motor_left_msg.thrust;
+        xQueueSend(controller->motor_message_queue_, &motor_info, 0);
+
+        motor_info.motor_id = 3; // Motor 4
+        motor_info.thrust = motor_right_msg.thrust;
+        xQueueSend(controller->motor_message_queue_, &motor_info, 0);
+
+        // Print for debug
+        Serial.printf("[GroundStation::rovControlTask] Motor thrusts: Up: %d, Down: %d, Left: %d, Right: %d\n", motor_up_msg.thrust, motor_down_msg.thrust, motor_left_msg.thrust, motor_right_msg.thrust);
+
+
         // Check lights control
         static bool first_run = true;
         bool intensity_changed = (increase_light_pressed || decrease_light_pressed || first_run);
@@ -249,23 +284,23 @@ void Controller::rovControlTask(void* params)
     }
 }
 
-void Controller::controllerBatteryTask(void* params)
+void GroundStation::controllerBatteryTask(void* params)
 {
-    Controller* controller = static_cast<Controller*>(params);
+    GroundStation* controller = static_cast<GroundStation*>(params);
 
     // Spin at 1 seconds
     const TickType_t delay_ticks = pdMS_TO_TICKS(1000);
     while (true)
     {   
-        // Controller Box
+        // GroundStation Box
         BatteryInformation controller_battery_info = Battery::getInstance().info();
         controller_battery_info.type = BatteryType::CONTROLLER;
         
         // DualShock4
         BatteryInformation dualshock_battery_info;
         dualshock_battery_info.type = BatteryType::DUALSHOCK;
-        dualshock_battery_info.percentage = PS4.Battery() * 10; // PS4.Battery() returns 0-10
-        dualshock_battery_info.charging = PS4.Charging();
+        dualshock_battery_info.percentage = controller->gamepad_->battery();
+        dualshock_battery_info.charging = false; //controller->gamepad_->isCharging();
 
         // Add to queue to update UI in main task
         xQueueSend(controller->battery_response_queue_, &controller_battery_info, 0);
@@ -275,15 +310,15 @@ void Controller::controllerBatteryTask(void* params)
     }
 }
 
-void Controller::rovBatteryTask(void* params)
+void GroundStation::rovBatteryTask(void* params)
 {
-    Controller* controller = static_cast<Controller*>(params);
+    GroundStation* controller = static_cast<GroundStation*>(params);
 
     // Spin at 10 seconds
     const TickType_t delay_ticks = pdMS_TO_TICKS(10000);
     while (true)
     {
-        Serial.println("[Controller::rovBatteryTask] Requesting battery...");
+        Serial.println("[GroundStation::rovBatteryTask] Requesting battery...");
 
         BatteryRequestMessage request;
         uint8_t packed_request = Protocol::pack(request);
@@ -334,7 +369,7 @@ void Controller::rovBatteryTask(void* params)
     }
 }
 
-void Controller::increaseLightsIntensity()
+void GroundStation::increaseLightsIntensity()
 {
     if (lights_intensity_ <= 245)
     {
@@ -346,7 +381,7 @@ void Controller::increaseLightsIntensity()
     }
 }
 
-void Controller::decreaseLightsIntensity()
+void GroundStation::decreaseLightsIntensity()
 {
     if (lights_intensity_ >= 10)
     {
@@ -356,6 +391,32 @@ void Controller::decreaseLightsIntensity()
     {
         lights_intensity_ = 0;
     }
+}
+
+void GroundStation::onConnectedController(ControllerPtr ctl)
+{
+    if (instance_ == nullptr)
+    {
+        return;
+    }
+
+    instance_->gamepad_ = ctl;
+    Serial.println("[GroundStation::onConnectedController] GroundStation connected");
+}
+
+void GroundStation::onDisconnectedController(ControllerPtr ctl)
+{
+    if (instance_ == nullptr)
+    {
+        return;
+    }
+
+    if (instance_->gamepad_ == ctl)
+    {
+        instance_->gamepad_ = nullptr;
+    }
+
+    Serial.println("[GroundStation::onDisconnectedController] GroundStation disconnected");
 }
 
 

@@ -31,8 +31,8 @@ public:
     void refresh();
 
     void showDashboard();
-    void showDualshockConnectionScreen();
-    void showAdvancedScreen();
+    void showGamepadConnectionScreen();
+    void showMotorThurstScreen();
 
 private:
     UI(/* args */);
@@ -44,8 +44,8 @@ private:
 
     lv_obj_t* createDashboard();
     void createMainContainer();
-    lv_obj_t* createDualshockConnectionScreen();
-    lv_obj_t* createAdvancedScreen();
+    lv_obj_t* createGamepadConnectionScreen();
+    lv_obj_t* createMotorThurstScreen();
 
     // Rewritable UI elements
     lv_obj_t* rov_battery_label_;
@@ -57,6 +57,11 @@ private:
     lv_obj_t* controller_battery_arc_;
     lv_obj_t* dualshock_battery_arc_;
     lv_obj_t* lights_arc_;
+
+    lv_obj_t* motor1_thrust_slider_;
+    lv_obj_t* motor2_thrust_slider_;
+    lv_obj_t* motor3_thrust_slider_;
+    lv_obj_t* motor4_thrust_slider_;
 
     lv_obj_t* dashboard_screen_;
     lv_obj_t* connect_dualshock_screen_;

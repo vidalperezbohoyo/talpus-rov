@@ -22,8 +22,8 @@ void UI::init()
     lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_180);
 
     dashboard_screen_ = createDashboard();
-    connect_dualshock_screen_ = createDualshockConnectionScreen();
-    advanced_screen_ = createAdvancedScreen();
+    connect_dualshock_screen_ = createGamepadConnectionScreen();
+    advanced_screen_ = createMotorThurstScreen();
 
     // Set dualshock connection screen
     lv_scr_load(connect_dualshock_screen_);
@@ -119,7 +119,23 @@ void UI::update(const LightsInformation& lights_info)
 
 void UI::update(const MotorInformation& motor_info)
 {
-
+    switch (motor_info.motor_id)
+    {
+        case 0:
+            lv_slider_set_value(motor1_thrust_slider_, motor_info.thrust, LV_ANIM_OFF);
+            break;
+        case 1:
+            lv_slider_set_value(motor2_thrust_slider_, motor_info.thrust, LV_ANIM_OFF);
+            break;
+        case 2:
+            lv_slider_set_value(motor3_thrust_slider_, motor_info.thrust, LV_ANIM_OFF);
+            break;
+        case 3:
+            lv_slider_set_value(motor4_thrust_slider_, motor_info.thrust, LV_ANIM_OFF);
+            break;
+        default:
+            return; // Unknown motor ID
+    }
 }
 
 void UI::refresh()
@@ -135,7 +151,7 @@ void UI::refresh()
     //Serial.println("[DEBUG] Refreshing screen");
 }
 
-lv_obj_t* UI::createDualshockConnectionScreen()
+lv_obj_t* UI::createGamepadConnectionScreen()
 {
     // Create screen
     lv_obj_t* screen = lv_obj_create(NULL);
@@ -144,7 +160,7 @@ lv_obj_t* UI::createDualshockConnectionScreen()
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
     lv_obj_set_style_text_color(screen, lv_color_white(), LV_PART_MAIN);
     lv_obj_t * label = lv_label_create(screen);
-    lv_label_set_text(label, "Please connect\nDualShock4 Controller");
+    lv_label_set_text(label, "Please connect gamepad");
     lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_opa(label, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
@@ -164,7 +180,7 @@ lv_obj_t* UI::createDashboard()
     return lv_scr_act();
 }
 
-lv_obj_t* UI::createAdvancedScreen()
+lv_obj_t* UI::createMotorThurstScreen()
 {
     lv_obj_t* screen = lv_obj_create(NULL);
 
@@ -179,10 +195,10 @@ lv_obj_t* UI::createAdvancedScreen()
     // Title
     // -------------------------------------------------------------------------
     lv_obj_t* title = lv_label_create(screen);
-    lv_label_set_text(title, "ADVANCED");
+    lv_label_set_text(title, "Motors Thrust");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(title, lv_color_white(), 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 8);
 
     // -------------------------------------------------------------------------
     // Helper to create a read-only value slider
@@ -193,52 +209,163 @@ lv_obj_t* UI::createAdvancedScreen()
                            lv_color_t color,
                            int y) -> lv_obj_t*
     {
+        // ---------------------------------------------------------------------
         // Container
+        // ---------------------------------------------------------------------
         lv_obj_t* container = lv_obj_create(parent);
 
         lv_obj_set_size(container, 210, 45);
         lv_obj_align(container, LV_ALIGN_TOP_MID, 0, y);
 
-        lv_obj_set_style_bg_color(container, lv_color_hex(0x151515), 0);
-        lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
-        lv_obj_set_style_border_width(container, 0, 0);
-        lv_obj_set_style_radius(container, 6, 0);
-        lv_obj_set_style_pad_all(container, 5, 0);
+        lv_obj_set_style_bg_color(
+            container,
+            lv_color_hex(0x151515),
+            0
+        );
 
-        // Label
+        lv_obj_set_style_bg_opa(
+            container,
+            LV_OPA_COVER,
+            0
+        );
+
+        lv_obj_set_style_border_width(
+            container,
+            0,
+            0
+        );
+
+        lv_obj_set_style_radius(
+            container,
+            6,
+            0
+        );
+
+        // Padding
+        lv_obj_set_style_pad_left(container, 6, 0);
+        lv_obj_set_style_pad_right(container, 6, 0);
+        lv_obj_set_style_pad_top(container, 4, 0);
+        lv_obj_set_style_pad_bottom(container, 4, 0);
+
+        // ---------------------------------------------------------------------
+        // Channel label
+        // ---------------------------------------------------------------------
         lv_obj_t* label = lv_label_create(container);
-        lv_label_set_text(label, name);
-        lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_color(label, lv_color_white(), 0);
-        lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
 
-        // Value
+        lv_label_set_text(label, name);
+
+        lv_obj_set_style_text_font(
+            label,
+            &lv_font_montserrat_14,
+            0
+        );
+
+        lv_obj_set_style_text_color(
+            label,
+            lv_color_white(),
+            0
+        );
+
+        lv_obj_align(
+            label,
+            LV_ALIGN_TOP_LEFT,
+            0,
+            0
+        );
+
+        // ---------------------------------------------------------------------
+        // Value label
+        // ---------------------------------------------------------------------
         lv_obj_t* valueLabel = lv_label_create(container);
 
         char text[16];
-        snprintf(text, sizeof(text), "%u  %u%%",
-                 value,
-                 (unsigned)((value * 100UL) / 255UL));
+
+        snprintf(
+            text,
+            sizeof(text),
+            "%u  %u%%",
+            value,
+            (unsigned)((value * 100UL) / 255UL)
+        );
 
         lv_label_set_text(valueLabel, text);
-        lv_obj_set_style_text_font(valueLabel, &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_color(valueLabel, color, 0);
-        lv_obj_align(valueLabel, LV_ALIGN_TOP_RIGHT, 0, 0);
 
+        lv_obj_set_style_text_font(
+            valueLabel,
+            &lv_font_montserrat_14,
+            0
+        );
+
+        lv_obj_set_style_text_color(
+            valueLabel,
+            color,
+            0
+        );
+
+        lv_obj_align(
+            valueLabel,
+            LV_ALIGN_TOP_RIGHT,
+            0,
+            0
+        );
+
+        // ---------------------------------------------------------------------
         // Slider
+        // ---------------------------------------------------------------------
         lv_obj_t* slider = lv_slider_create(container);
 
-        lv_obj_set_width(slider, 190);
-        lv_obj_set_height(slider, 8);
+        // El slider ocupa prácticamente todo el ancho del container
+        lv_obj_set_width(
+            slider,
+            lv_pct(100)
+        );
 
-        lv_slider_set_range(slider, 0, 255);
-        lv_slider_set_value(slider, value, LV_ANIM_OFF);
+        lv_obj_set_height(
+            slider,
+            8
+        );
 
+        lv_obj_set_style_margin_left(slider, 5, 0);
+        lv_obj_set_style_margin_right(slider, 5, 0);
+
+        lv_obj_align(
+            slider,
+            LV_ALIGN_BOTTOM_MID,
+            0,
+            -1
+        );
+
+        // ---------------------------------------------------------------------
+        // Range / value
+        // ---------------------------------------------------------------------
+        lv_slider_set_range(
+            slider,
+            0,
+            255
+        );
+
+        lv_slider_set_value(
+            slider,
+            value,
+            LV_ANIM_OFF
+        );
+
+        // ---------------------------------------------------------------------
         // Read only
-        lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_clear_state(slider, LV_STATE_FOCUSED);
+        // ---------------------------------------------------------------------
+        lv_obj_clear_flag(
+            slider,
+            LV_OBJ_FLAG_CLICKABLE
+        );
 
-        // Background
+        lv_obj_clear_state(
+            slider,
+            LV_STATE_FOCUSED
+        );
+
+        // ---------------------------------------------------------------------
+        // Slider background
+        // ---------------------------------------------------------------------
         lv_obj_set_style_bg_color(
             slider,
             lv_color_hex(0x303030),
@@ -251,7 +378,15 @@ lv_obj_t* UI::createAdvancedScreen()
             LV_PART_MAIN
         );
 
+        lv_obj_set_style_radius(
+            slider,
+            LV_RADIUS_CIRCLE,
+            LV_PART_MAIN
+        );
+
+        // ---------------------------------------------------------------------
         // Indicator
+        // ---------------------------------------------------------------------
         lv_obj_set_style_bg_color(
             slider,
             color,
@@ -264,24 +399,46 @@ lv_obj_t* UI::createAdvancedScreen()
             LV_PART_INDICATOR
         );
 
+        lv_obj_set_style_radius(
+            slider,
+            LV_RADIUS_CIRCLE,
+            LV_PART_INDICATOR
+        );
+
+        // ---------------------------------------------------------------------
         // Knob
+        // ---------------------------------------------------------------------
+        // IMPORTANTE:
+        // El knob se dimensiona mediante LV_PART_KNOB.
+        // NO hacemos lv_obj_set_size(slider, 10, 10).
         lv_obj_set_style_bg_color(
             slider,
             color,
             LV_PART_KNOB
         );
 
-        lv_obj_set_size(
+        lv_obj_set_style_bg_opa(
             slider,
-            10,
-            10
+            LV_OPA_COVER,
+            LV_PART_KNOB
         );
 
-        lv_obj_align(
+        lv_obj_set_style_width(
             slider,
-            LV_ALIGN_BOTTOM_MID,
-            0,
-            -1
+            10,
+            LV_PART_KNOB
+        );
+
+        lv_obj_set_style_height(
+            slider,
+            10,
+            LV_PART_KNOB
+        );
+
+        lv_obj_set_style_radius(
+            slider,
+            LV_RADIUS_CIRCLE,
+            LV_PART_KNOB
         );
 
         return slider;
@@ -291,36 +448,36 @@ lv_obj_t* UI::createAdvancedScreen()
     // Sliders
     // -------------------------------------------------------------------------
 
-    createSlider(
+    motor1_thrust_slider_ = createSlider(
         screen,
-        "CHANNEL 1",
+        "MOTOR 1 (UP)",
         64,
         lv_color_hex(0x00BFFF),
-        40
+        38
     );
 
-    createSlider(
+    motor2_thrust_slider_ = createSlider(
         screen,
-        "CHANNEL 2",
+        "MOTOR 2 (DOWN)",
         128,
         lv_color_hex(0x00E676),
-        90
+        88
     );
 
-    createSlider(
+    motor3_thrust_slider_ = createSlider(
         screen,
-        "CHANNEL 3",
+        "MOTOR 3 (LEFT)",
         192,
         lv_color_hex(0xFFB300),
-        140
+        138
     );
 
-    createSlider(
+    motor4_thrust_slider_ = createSlider(
         screen,
-        "CHANNEL 4",
+        "MOTOR 4 (RIGHT)",
         255,
         lv_color_hex(0xFF5252),
-        190
+        188
     );
 
     return screen;
@@ -409,7 +566,7 @@ void UI::createMainContainer()
                     break;
 
                 case 2:
-                    lv_label_set_text(title, "DualShock4");
+                    lv_label_set_text(title, "Gamepad");
                     dualshock_battery_arc_ = lv_arc_create(cell);
                     arc = dualshock_battery_arc_;
                     dualshock_battery_label_ = lv_label_create(arc);
@@ -451,15 +608,15 @@ void UI::showDashboard()
     lv_scr_load(dashboard_screen_);
 }
 
-void UI::showDualshockConnectionScreen()
+void UI::showGamepadConnectionScreen()
 {
-    Serial.println("[UI::showDualshockConnectionScreen] Showing DualShock connection screen");
+    Serial.println("[UI::showGamepadConnectionScreen] Showing Gamepad connection screen");
     lv_scr_load(connect_dualshock_screen_);
 }
 
-void UI::showAdvancedScreen()
+void UI::showMotorThurstScreen()
 {
-    Serial.println("[UI::showAdvancedScreen] Showing advanced screen");
+    Serial.println("[UI::showMotorThurstScreen] Showing advanced screen");
     lv_scr_load(advanced_screen_);
 }
 #endif
