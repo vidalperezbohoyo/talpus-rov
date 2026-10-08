@@ -299,7 +299,7 @@ void GroundStation::controllerBatteryTask(void* params)
         // DualShock4
         BatteryInformation dualshock_battery_info;
         dualshock_battery_info.type = BatteryType::DUALSHOCK;
-        dualshock_battery_info.percentage = controller->gamepad_->battery();
+        dualshock_battery_info.percentage = map(controller->gamepad_->battery(), 0, 255, 0, 100);
         dualshock_battery_info.charging = false; //controller->gamepad_->isCharging();
 
         // Add to queue to update UI in main task
