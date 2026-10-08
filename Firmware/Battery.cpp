@@ -82,7 +82,7 @@ uint16_t Battery::readADC()
     // No delay to avoid protocol fail at sync
 #endif
 
-    Serial.println("[Battery::readADC] New ADC reading: " + String(new_adc));
+    // Serial.println("[Battery::readADC] New ADC reading: " + String(new_adc));
 
     return static_cast<uint16_t>(new_adc);
 }

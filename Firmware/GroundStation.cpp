@@ -141,21 +141,20 @@ void GroundStation::rovControlTask(void* params)
         int up_down_stick = - controller->gamepad_->axisY();
         int fordward_stick = - controller->gamepad_->axisRY();
 
-        Serial.printf("[GroundStation::rovControlTask] Joystick readings: Yaw: %d, Up/Down: %d, Forward: %d\n", yaw_stick, up_down_stick, fordward_stick);
+        // Serial.printf("[GroundStation::rovControlTask] Joystick readings: Yaw: %d, Up/Down: %d, Forward: %d\n", yaw_stick, up_down_stick, fordward_stick);
 
         // Truncate to 500
         yaw_stick = std::max(-JOYSTICK_MAX, std::min(yaw_stick, JOYSTICK_MAX));
         up_down_stick = std::max(-JOYSTICK_MAX, std::min(up_down_stick, JOYSTICK_MAX));
         fordward_stick = std::max(-JOYSTICK_MAX, std::min(fordward_stick, JOYSTICK_MAX));
 
-        Serial.printf("[GroundStation::rovControlTask] Clamped joystick readings: Yaw: %d, Up/Down: %d, Forward: %d\n", yaw_stick, up_down_stick, fordward_stick);
+        // Serial.printf("[GroundStation::rovControlTask] Clamped joystick readings: Yaw: %d, Up/Down: %d, Forward: %d\n", yaw_stick, up_down_stick, fordward_stick);
         
         bool options = controller->gamepad_->miscButtons() & 0x04;
         bool share   = controller->gamepad_->miscButtons() & 0x02;
-        bool force_ota = false;
 
         // Check force OTA button
-        if (force_ota)
+        if (share)
         {
             Serial.println("[GroundStation::rovControlTask] OTA button pressed, forcing OTA mode on ROV...");
             OTAUpdateMessage ota_msg;
@@ -170,15 +169,22 @@ void GroundStation::rovControlTask(void* params)
             continue; // Skip the rest of the loop to avoid sending other commands
         }
 
-        if (options)
+        static bool last_options = false;
+        static int loops_since_last_options = 0;
+        if (options && loops_since_last_options > 2) // Debounce options button
         {
-            UI::getInstance().showMotorThurstScreen();
+            if (last_options)
+            {
+                UI::getInstance().showDashboard();
+            }
+            else
+            {
+                UI::getInstance().showMotorThurstScreen();
+            }
+            last_options = !last_options;
+            loops_since_last_options = 0;
         }
-
-        if (share)
-        {
-            UI::getInstance().showDashboard();
-        }
+        loops_since_last_options++;
 
         // Left-Right-Forward
         motor_left_msg.thrust = 0;
@@ -230,7 +236,7 @@ void GroundStation::rovControlTask(void* params)
         xQueueSend(controller->motor_message_queue_, &motor_info, 0);
 
         // Print for debug
-        Serial.printf("[GroundStation::rovControlTask] Motor thrusts: Up: %d, Down: %d, Left: %d, Right: %d\n", motor_up_msg.thrust, motor_down_msg.thrust, motor_left_msg.thrust, motor_right_msg.thrust);
+        // Serial.printf("[GroundStation::rovControlTask] Motor thrusts: Up: %d, Down: %d, Left: %d, Right: %d\n", motor_up_msg.thrust, motor_down_msg.thrust, motor_left_msg.thrust, motor_right_msg.thrust);
 
 
         // Check lights control
